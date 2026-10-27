@@ -21,14 +21,16 @@ from metabase import query, sql_file
 DASHBOARD_URL = "https://deepakshiagarwal.github.io/ServiceTicketReport/"
 
 # Standard limits: a row needs at least MIN_TICKETS on both sides (either side for volume).
-MIN_TICKETS = 30
+MIN_TICKETS = 50
 VOLUME_PCT = 0.20      # tickets created, +/- 20%
 R24_PP = 0.05          # resolved within 24h, +/- 5 percentage points
 REOPEN_PP = 0.03       # reopened within 48h of resolution, +/- 3 pp
 P95_HOURS = 12         # P95 resolution time, +/- 12 hours (capped at 72h)
 P95_CAP = 72.0
-MAX_LINES = 10         # per section and direction; the rest is summarised as "and N more"
+MAX_WORSE = 5          # lines per section for things that got worse
+MAX_BETTER = 3         # lines per section for things that got better
 
+PRIO = {"All tickets": 0, "Workstream": 1, "Chat / call": 2, "Category": 3, "Queue": 4, "Sub-category": 5, "Workstream › category": 6}
 KIND = {"Workstream": "workstream", "Chat / call": "chat/call", "Category": "category",
         "Sub-category": "sub-category", "Queue": "queue", "Workstream › category": "workstream › category"}
 
@@ -52,47 +54,58 @@ def find_alerts(rows: list) -> dict:
     out = {"vol": [], "r24": [], "reopen": [], "p95": []}
     for r in rows:
         n = lambda k: float(r.get(k) or 0)
-        name = row_name(r)
+        name = row_name(r); prio = PRIO.get(r["dim"], 9)
 
         cur, prev = n("vol_cur"), n("vol_prev")
         if max(cur, prev) >= MIN_TICKETS:
             chg = (cur - prev) / prev if prev else 1.0
             if abs(chg) >= VOLUME_PCT:
-                out["vol"].append((chg > 0, abs(chg) / VOLUME_PCT, f"{name}: {cur:,.0f} vs {prev:,.0f} tickets → {chg:+.0%}"))
+                out["vol"].append((chg > 0, abs(chg) / VOLUME_PCT, f"{name}: {cur:,.0f} vs {prev:,.0f} tickets → {chg:+.0%}", prio))
 
         bc, bp = n("r24_base_cur"), n("r24_base_prev")
         if bc >= MIN_TICKETS and bp >= MIN_TICKETS:
             a, b = n("r24_cur") / bc, n("r24_prev") / bp
             if abs(a - b) >= R24_PP:
-                out["r24"].append((a < b, abs(a - b) / R24_PP, f"{name}: {a:.1%} vs {b:.1%} → {(a - b) * 100:+.1f} points"))
+                out["r24"].append((a < b, abs(a - b) / R24_PP, f"{name}: {a:.1%} vs {b:.1%} → {(a - b) * 100:+.1f} points", prio))
 
         bc, bp = n("ro_base_cur"), n("ro_base_prev")
         if bc >= MIN_TICKETS and bp >= MIN_TICKETS:
             a, b = n("ro_cur") / bc, n("ro_prev") / bp
             if abs(a - b) >= REOPEN_PP:
-                out["reopen"].append((a > b, abs(a - b) / REOPEN_PP, f"{name}: {a:.1%} vs {b:.1%} → {(a - b) * 100:+.1f} points"))
+                out["reopen"].append((a > b, abs(a - b) / REOPEN_PP, f"{name}: {a:.1%} vs {b:.1%} → {(a - b) * 100:+.1f} points", prio))
 
         if n("p95_base_cur") >= MIN_TICKETS and n("p95_base_prev") >= MIN_TICKETS and r.get("p95_cur") is not None and r.get("p95_prev") is not None:
             a, b = n("p95_cur"), n("p95_prev")
             if not (a >= P95_CAP and b >= P95_CAP) and abs(a - b) >= P95_HOURS:
                 fa = "72h+" if a >= P95_CAP else f"{a:.1f}h"
                 fb = "72h+" if b >= P95_CAP else f"{b:.1f}h"
-                out["p95"].append((a > b, abs(a - b) / P95_HOURS, f"{name}: {fa} vs {fb} → {a - b:+.1f} hours"))
+                out["p95"].append((a > b, abs(a - b) / P95_HOURS, f"{name}: {fa} vs {fb} → {a - b:+.1f} hours", prio))
+    return out
+
+
+def dedupe(items: list) -> list:
+    """Drop lines whose numbers repeat an earlier, broader row (e.g. queue Cx = workstream CX L2)."""
+    seen, out = set(), []
+    for a in sorted(items, key=lambda a: a[3]):
+        nums = a[2].split(": ", 1)[-1]
+        if nums in seen:
+            continue
+        seen.add(nums)
+        out.append(a)
     return out
 
 
 def section(title: str, when: str, why: str, items: list) -> list:
     lines = [f"\n*{title}*", f"{when}", f"_{why}_"]
+    items = dedupe(items)
     if not items:
         return lines + [":white_check_mark: Nothing moved more than usual."]
-    for bad, icon, word in ((True, ":red_circle:", "Worse"), (False, ":large_green_circle:", "Better")):
+    for bad, icon, word, cap in ((True, ":red_circle:", "Worse", MAX_WORSE), (False, ":large_green_circle:", "Better", MAX_BETTER)):
         part = sorted((a for a in items if a[0] == bad), key=lambda a: -a[1])
         if not part:
             continue
-        lines.append(f"{icon} {word} ({len(part)})")
-        lines += [f"• {a[2]}" for a in part[:MAX_LINES]]
-        if len(part) > MAX_LINES:
-            lines.append(f"   …and {len(part) - MAX_LINES} more on the dashboard")
+        lines.append(f"{icon} {word}" + (f" — top {cap} of {len(part)}" if len(part) > cap else ""))
+        lines += [f"• {a[2]}" for a in part[:cap]]
     return lines
 
 

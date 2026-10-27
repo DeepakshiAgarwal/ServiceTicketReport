@@ -15,7 +15,7 @@ arrival-time and channel views.
 2. `scripts/alerts.py` posts the day's notable changes to Slack.
 
 Alerts compare every row (all tickets, each workstream, chat/call, category, sub-category, queue and workstream × category)
-on equally old tickets, and report a change only when the row has at least 30 tickets and moves past:
+on equally old tickets, and report a change only when the row has at least 50 tickets and moves past (at most 5 worse and 3 better lines per section, duplicates removed):
 
 | Number | Compared | Limit |
 |---|---|---|
