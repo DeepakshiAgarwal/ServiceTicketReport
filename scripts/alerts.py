@@ -53,6 +53,9 @@ def find_alerts(rows: list) -> dict:
     """{section: [(bad, size, line), ...]}"""
     out = {"vol": [], "r24": [], "reopen": [], "p95": []}
     for r in rows:
+        # Only two workstreams are reported: PFT and CX L2 (tickets in neither still count in every other cut)
+        if r["dim"] in ("Workstream", "Workstream › category") and str(r["val"]).split(" › ")[0] == "Other":
+            continue
         n = lambda k: float(r.get(k) or 0)
         name = row_name(r); prio = PRIO.get(r["dim"], 9)
 

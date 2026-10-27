@@ -167,7 +167,7 @@
       <h3>How the metrics are defined</h3>
       <dl>
         <dt>Category / sub-category</dt><dd>Split of the ticket's latest title ("Category|Sub-category"). Case differences are merged.</dd>
-        <dt>Workstream</dt><dd>CX L2 = queue Cx. PFT = Internet Issues, Partner Misbehavior, Shifting Request (Shift Within My Home, Shift to New Address) and Others (except Other, App not working, Invoice requested), not in queue Cx. Everything else = Other.</dd>
+        <dt>Workstream</dt><dd>CX L2 = queue Cx. PFT = Internet Issues, Partner Misbehavior, Shifting Request (Shift Within My Home, Shift to New Address) and Others (except Other, App not working, Invoice requested), not in queue Cx. Tickets in neither (e.g. Disconnect, Payment Issues, Refund) are not a workstream: they appear under "All workstreams" and in every other cut, but not as a workstream of their own.</dd>
         <dt>Chat / call</dt><dd>Chat = TICKET_SOURCE CUSTOMER_CHAT. Call = every other ticket: IVR and Kapture sources until Jul 17; since Jul 18 call tickets arrive with the source left blank.</dd>
         <dt>Queue</dt><dd>CURRENT_QUEUE on the ticket (Px, Cx, Booking Status, Wiom Net, Tech, …).</dd>
         <dt>Resolved ≤ Xh</dt><dd>Share of all tickets created in the period whose final resolution came within X calendar hours of creation (RESOLUTION_PERIOD_MINS_CALENDARHRS). Open tickets count as not resolved, so the latest days read slightly low until they age.</dd>
@@ -384,7 +384,7 @@ function bRows() {
       SUMS.forEach((f) => { o[f] += Number(r[f]) || 0; });
       for (const [b, n] of histOf(r)) o.hist[b] += n;
     };
-    raw.forEach((r) => { if (!keep(r, s)) return; add(r, 'all', 'All tickets'); add(r, 'category', r.cat); add(r, 'subcategory', r.cs); add(r, 'queue', r.q); add(r, 'workstream', r.ws); add(r, 'channel', r.ch); });
+    raw.forEach((r) => { if (!keep(r, s)) return; add(r, 'all', 'All tickets'); add(r, 'category', r.cat); add(r, 'subcategory', r.cs); add(r, 'queue', r.q); if (r.ws !== 'Other') add(r, 'workstream', r.ws); add(r, 'channel', r.ch); });
     const rows = [...m.values()];
     const tot = new Map(); rows.forEach((o) => { if (o.dim === 'all') tot.set(o.period, o.tickets); });
     rows.forEach((o) => {
@@ -427,7 +427,7 @@ function filtered(id) {
   if (id === 'backlog') return cached('backlog', (raw, s) => {
     const m = new Map();
     const add = (r, dim, val) => { const k = dim + '|' + val + '|' + r.age_bucket; const o = m.get(k) || { dim, val, age_bucket: r.age_bucket, age_order: Number(r.age_order), tickets: 0 }; o.tickets += Number(r.tickets); m.set(k, o); };
-    raw.forEach((r) => { if (!keep(r, s)) return; add(r, 'all', 'All open'); add(r, 'category', r.cat); add(r, 'queue', r.q); add(r, 'workstream', r.ws); add(r, 'channel', r.ch); });
+    raw.forEach((r) => { if (!keep(r, s)) return; add(r, 'all', 'All open'); add(r, 'category', r.cat); add(r, 'queue', r.q); if (r.ws !== 'Other') add(r, 'workstream', r.ws); add(r, 'channel', r.ch); });
     return [...m.values()];
   });
   if (id === 'backlog_totals') {
@@ -491,7 +491,7 @@ function drawFilters() {  const raw = rowsOf('breakdown'); const s = S();
   MS.forEach((cfg) => {
     const root = document.getElementById(cfg.id); const list = root.querySelector('.cx-ms-list'); const chosen = s[cfg.param];
     if (raw && !list.childElementCount) {
-      const m = new Map(); raw.filter((r) => r.ptype === 'month').forEach((r) => m.set(r[cfg.field], (m.get(r[cfg.field]) || 0) + Number(r.tickets)));
+      const m = new Map(); raw.filter((r) => r.ptype === 'month' && !(cfg.field === 'ws' && r.ws === 'Other')).forEach((r) => m.set(r[cfg.field], (m.get(r[cfg.field]) || 0) + Number(r.tickets)));
       [...m.entries()].sort((a, b) => b[1] - a[1]).forEach(([v, n]) => {
         const l = document.createElement('label'); l.dataset.v = v;
         const i = document.createElement('input'); i.type = 'checkbox'; i.value = v;
