@@ -1,0 +1,921 @@
+<style>
+.cx { font-family: var(--font-anthropic-sans); display: flex; flex-direction: column; gap: var(--cds-gap-lg); }
+.cx-head { display: flex; flex-direction: column; gap: var(--cds-gap-xs); }
+.cx-title { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); margin: 0; text-wrap: balance; }
+.cx-sub { color: var(--color-fg-muted); font-size: var(--cds-font-size-body); margin: 0; max-width: 75ch; }
+.cx-sub b, .cx b { font-weight: 600; }
+.cx-tabs { display: flex; flex-wrap: wrap; gap: var(--cds-gap-xs); border-bottom: 1px solid var(--color-border-line); }
+.cx-tab { font: inherit; font-size: var(--cds-font-size-body); background: none; border: 0; border-bottom: 2px solid transparent; color: var(--color-fg-muted); padding: var(--cds-pad-sm) var(--cds-pad-md); cursor: pointer; margin-bottom: -1px; }
+.cx-tab[aria-selected="true"] { color: var(--color-fg); border-bottom-color: var(--color-fg); }
+.cx-tab:focus-visible, .cx-seg button:focus-visible, .cx th button:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+.cx-page { display: flex; flex-direction: column; gap: var(--cds-gap-md); }
+.cx-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); gap: var(--cds-gap-md); }
+.cx-tile { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-md); display: flex; flex-direction: column; gap: var(--cds-gap-xs); }
+.cx-tile-l { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.cx-tile-v { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); font-variant-numeric: tabular-nums; }
+.cx-tile-d { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
+.cx-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr)); gap: var(--cds-gap-md); }
+.cx-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: flex; flex-direction: column; gap: var(--cds-gap-sm); min-width: 0; }
+.cx-card h3 { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); margin: 0; }
+.cx-note { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin: 0; }
+.cx-ctrl { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); align-items: center; }
+.cx-seg { display: inline-flex; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); overflow: hidden; }
+.cx-seg button { font: inherit; font-size: var(--cds-font-size-caption); background: none; border: 0; padding: var(--cds-pad-xs) var(--cds-pad-sm); color: var(--color-fg-muted); cursor: pointer; }
+.cx-seg button + button { border-left: 1px solid var(--color-border-line); }
+.cx-seg button[aria-pressed="true"] { background: var(--color-bg); color: var(--color-fg); font-weight: 600; }
+.cx select, .cx input[type="search"] { font: inherit; font-size: var(--cds-font-size-caption); padding: var(--cds-pad-xs) var(--cds-pad-sm); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-bg); color: var(--color-fg); }
+.cx input[type="search"] { min-width: 0; width: 14rem; max-width: 100%; }
+.cx-tw { overflow: auto; max-height: 34rem; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); }
+.cx table { border-collapse: collapse; width: 100%; font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+.cx th, .cx td { padding: 6px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--color-border-line); }
+.cx th:first-child, .cx td:first-child { text-align: left; white-space: normal; min-width: 11rem; }
+.cx thead th { position: sticky; top: 0; background: var(--color-panel); z-index: 1; color: var(--color-fg-muted); font-weight: 500; vertical-align: bottom; }
+.cx th button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: inherit; }
+.cx tr.cx-total td { font-weight: 600; background: var(--color-bg); }
+.cx td.cx-grp { border-left: 1px solid var(--color-border-line); }
+.cx .cx-bad { color: var(--color-bad); }
+.cx .cx-good { color: var(--color-ok); }
+/* Change cells: fill the whole cell so worse / better reads at a glance */
+.cx td.cx-bad { background: color-mix(in srgb, var(--color-bad) 22%, transparent) !important; color: var(--color-bad); font-weight: 600; }
+.cx td.cx-good { background: color-mix(in srgb, var(--color-ok) 22%, transparent) !important; color: var(--color-ok); font-weight: 600; }
+/* Change figures on the overview cards: same colours as a pill */
+.cx .cx-tile-d .cx-bad, .cx .cx-tile-d .cx-good { padding: 1px 6px; border-radius: 999px; font-weight: 600; }
+.cx .cx-tile-d .cx-bad { background: color-mix(in srgb, var(--color-bad) 18%, transparent); }
+.cx .cx-tile-d .cx-good { background: color-mix(in srgb, var(--color-ok) 18%, transparent); }
+.cx-chart { position: relative; min-height: 260px; }
+.cx-chart svg { display: block; overflow: visible; }
+.cx-chart text { fill: var(--color-fg-muted); font-size: 11px; font-family: var(--font-anthropic-sans); }
+.cx-legend { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm) var(--cds-gap-md); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.cx-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.cx-legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.cx-tip { position: absolute; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: var(--cds-pad-xs) var(--cds-pad-sm); font-size: var(--cds-font-size-caption); white-space: nowrap; z-index: 5; font-variant-numeric: tabular-nums; }
+.cx-tip .h { color: var(--cds-text-secondary); margin-bottom: 2px; }
+.cx-tip i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 6px; }
+.cx-fail { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: inherit; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.cx-fail::before { content: ""; width: .375rem; height: .375rem; border-radius: 50%; background: var(--color-bad); }
+.cx dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 0; font-size: var(--cds-font-size-caption); }
+.cx dt { font-weight: 600; } .cx dd { margin: 0; color: var(--color-fg-muted); }
+.cx-filters { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm) var(--cds-gap-md); align-items: flex-end; padding: var(--cds-pad-sm) var(--cds-pad-md); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); }
+.cx-fl { display: flex; flex-direction: column; gap: 4px; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); min-width: 0; }
+.cx-fl select { min-width: 12rem; max-width: 100%; font-size: var(--cds-font-size-body); }
+.cx-reset { font: inherit; font-size: var(--cds-font-size-caption); background: var(--color-bg); color: var(--color-fg); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-xs) var(--cds-pad-sm); cursor: pointer; }
+.cx-reset:focus-visible, .cx-fl select:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+.cx-dates { display: flex; align-items: center; gap: 6px; color: var(--color-fg-muted); }
+.cx .cx-dates input[type="date"] { font: inherit; font-size: var(--cds-font-size-body); padding: 3px 6px; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-bg); color: var(--color-fg); }
+.cx .cx-dates input[type="date"]:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+.cx-ms { position: relative; }
+.cx-ms-btn { font: inherit; font-size: var(--cds-font-size-body); min-width: 13rem; max-width: 100%; display: flex; justify-content: space-between; gap: var(--cds-gap-sm); text-align: left; padding: var(--cds-pad-xs) var(--cds-pad-sm); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-bg); color: var(--color-fg); cursor: pointer; }
+.cx-ms-btn.on { border-color: var(--color-fg); font-weight: 600; }
+.cx-ms-btn:focus-visible, .cx-ms-acts button:focus-visible, .cx-ms-list input:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+.cx-ms-pop { position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; width: min(22rem, 85vw); background: var(--cds-surface-popover); border: 1px solid var(--cds-border); border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: var(--cds-pad-sm); display: flex; flex-direction: column; gap: var(--cds-gap-xs); }
+.cx-ms-pop[hidden], .cx-ms-list label[hidden] { display: none; }
+.cx .cx-ms-pop input[type="search"] { width: 100%; box-sizing: border-box; }
+.cx-ms-acts { display: flex; gap: var(--cds-gap-xs); }
+.cx-ms-acts button { font: inherit; font-size: var(--cds-font-size-caption); background: none; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 2px 8px; color: var(--color-fg); cursor: pointer; }
+.cx-ms-list { max-height: 18rem; overflow: auto; display: flex; flex-direction: column; }
+.cx-ms-list label { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: var(--cds-radius); cursor: pointer; font-size: var(--cds-font-size-caption); color: var(--color-fg); }
+.cx-ms-list label:hover { background: var(--color-bg); }
+.cx-ms-list span { flex: 1; min-width: 0; }
+.cx-ms-list small { color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
+.cx-empty { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); padding: var(--cds-pad-md); }
+[data-dash-source-state=empty] { color: transparent; }
+[data-dash-source-state=refreshing] { opacity: .5; transition: opacity var(--cds-dur-slow); }
+</style>
+
+<div class="cx">
+  <header class="cx-head">
+    <h1 class="cx-title">CX service tickets</h1>
+    <p class="cx-sub" id="cx-takeaway"><span class="dash-skeleton">—</span></p>
+    <p class="cx-note" id="cx-range">Tickets by created date (IST). One row per ticket from PROD_DB.PUBLIC.SERVICE_TICKET_MODEL.</p>
+  </header>
+
+  <div class="cx-filters" id="cx-filters" data-source="breakdown">
+    <div class="cx-fl">Workstream
+      <div class="cx-ms" id="ms-ws">
+        <button class="cx-ms-btn" type="button" aria-expanded="false" aria-haspopup="true"><span class="cx-ms-txt">All workstreams</span> ▾</button>
+        <div class="cx-ms-pop" hidden>
+          <input type="search" id="ms-ws-q" placeholder="Search workstreams" aria-label="Search workstreams">
+          <div class="cx-ms-acts"><button type="button" data-act="shown">Select shown</button><button type="button" data-act="clear">Clear</button></div>
+          <div class="cx-ms-list" role="group" aria-label="Workstreams"></div>
+        </div>
+      </div>
+    </div>    <div class="cx-fl">Chat / call
+      <div class="cx-ms" id="ms-ch">
+        <button class="cx-ms-btn" type="button" aria-expanded="false" aria-haspopup="true"><span class="cx-ms-txt">Chat and call</span> ▾</button>
+        <div class="cx-ms-pop" hidden>
+          <input type="search" id="ms-ch-q" placeholder="Search" aria-label="Search chat or call">
+          <div class="cx-ms-acts"><button type="button" data-act="shown">Select shown</button><button type="button" data-act="clear">Clear</button></div>
+          <div class="cx-ms-list" role="group" aria-label="Chat or call"></div>
+        </div>
+      </div>
+    </div>
+    <div class="cx-fl">Category      <div class="cx-ms" id="ms-cat">
+        <button class="cx-ms-btn" type="button" aria-expanded="false" aria-haspopup="true"><span class="cx-ms-txt">All categories</span> ▾</button>
+        <div class="cx-ms-pop" hidden>
+          <input type="search" id="ms-cat-q" placeholder="Search categories" aria-label="Search categories">
+          <div class="cx-ms-acts"><button type="button" data-act="shown">Select shown</button><button type="button" data-act="clear">Clear</button></div>
+          <div class="cx-ms-list" role="group" aria-label="Categories"></div>
+        </div>
+      </div>
+    </div>
+    <div class="cx-fl">Queue
+      <div class="cx-ms" id="ms-queue">
+        <button class="cx-ms-btn" type="button" aria-expanded="false" aria-haspopup="true"><span class="cx-ms-txt">All queues</span> ▾</button>
+        <div class="cx-ms-pop" hidden>
+          <input type="search" id="ms-queue-q" placeholder="Search queues" aria-label="Search queues">
+          <div class="cx-ms-acts"><button type="button" data-act="shown">Select shown</button><button type="button" data-act="clear">Clear</button></div>
+          <div class="cx-ms-list" role="group" aria-label="Queues"></div>
+        </div>
+      </div>
+    </div>
+    <div class="cx-fl">Created between
+      <div class="cx-dates">
+        <input type="date" id="f-from" min="2000-01-01" max="2099-12-31" aria-label="From date">
+        <span>–</span>
+        <input type="date" id="f-to" min="2000-01-01" max="2099-12-31" aria-label="To date">
+      </div>
+    </div>
+    <button class="cx-reset" id="f-reset" type="button" hidden>Clear filters</button>    <span class="cx-note" id="f-scope"></span>
+  </div>
+
+  <nav class="cx-tabs" role="tablist" aria-label="Sections">
+    <button class="cx-tab" role="tab" id="tab-overview" data-tab="overview" aria-selected="true">Overview</button>
+    <button class="cx-tab" role="tab" id="tab-volume" data-tab="volume" aria-selected="false">Ticket volume</button>
+    <button class="cx-tab" role="tab" id="tab-resolution" data-tab="resolution" aria-selected="false">Resolution TAT</button>
+    <button class="cx-tab" role="tab" id="tab-reopen" data-tab="reopen" aria-selected="false">Reopen rate</button>
+    <button class="cx-tab" role="tab" id="tab-p95" data-tab="p95" aria-selected="false">P95 TAT</button>
+    <button class="cx-tab" role="tab" id="tab-ops" data-tab="ops" aria-selected="false">Backlog &amp; operations</button>
+  </nav>
+
+  <!-- OVERVIEW -->
+  <section class="cx-page" id="overview" data-page="overview">
+    <div class="cx-tiles" id="cx-tiles" data-source="breakdown backlog"></div>
+    <div class="cx-grid">
+      <div class="cx-card" id="card-daily">
+        <h3>Daily tickets</h3>
+        <p class="cx-note">Bars: tickets created per day. Line: 7-day average. The last day shown is a partial day.</p>
+        <div class="cx-chart" id="chart-daily" data-source="daily"></div>
+      </div>
+      <div class="cx-card" id="card-curve">
+        <h3>Resolution curve by month</h3>
+        <p class="cx-note">Share of tickets created in the month that were resolved within each time limit.</p>
+        <div class="cx-legend" id="legend-curve"></div>
+        <div class="cx-chart" id="chart-curve" data-source="breakdown"></div>
+      </div>
+    </div>
+    <div class="cx-card" id="card-defs">
+      <h3>How the metrics are defined</h3>
+      <dl>
+        <dt>Category / sub-category</dt><dd>Split of the ticket's latest title ("Category|Sub-category"). Case differences are merged.</dd>
+        <dt>Workstream</dt><dd>CX L2 = queue Cx. PFT = Internet Issues, Partner Misbehavior, Shifting Request (Shift Within My Home, Shift to New Address) and Others (except Other, App not working, Invoice requested), not in queue Cx. PFT tickets finally resolved within 5 minutes of creation are treated as resolved on call and shown separately as "PFT – resolved on call". Everything else = Other.</dd>
+        <dt>Chat / call</dt><dd>Chat = TICKET_SOURCE CUSTOMER_CHAT. Call = every other ticket: IVR and Kapture sources until Jul 17; since Jul 18 call tickets arrive with the source left blank.</dd>
+        <dt>Queue</dt><dd>CURRENT_QUEUE on the ticket (Px, Cx, Booking Status, Wiom Net, Tech, …).</dd>
+        <dt>Resolved ≤ Xh</dt><dd>Share of all tickets created in the period whose final resolution came within X calendar hours of creation (RESOLUTION_PERIOD_MINS_CALENDARHRS). Open tickets count as not resolved, so the latest days read slightly low until they age.</dd>
+        <dt>&gt; 72h</dt><dd>Resolved, but after more than 72 hours. Open = not resolved yet.</dd>
+        <dt>P50 / P90 / P95</dt><dd>Resolution time (calendar hours) that 50% / 90% / 95% of resolved tickets fell within. Worked out from a resolution-time histogram so it follows the filters: exact to within 15 minutes below 24h, 1 hour up to 7 days, 1 day beyond.</dd>
+        <dt>Reopen rate</dt><dd>Tickets reopened at least once (TIMES_REOPENED &gt; 0) ÷ resolved tickets.</dd>
+        <dt>Repeat in 7 days</dt><dd>Ticket from a customer who had raised another ticket in the previous 7 days.</dd>
+        <dt>Created between</dt><dd>Pick a From and To date (created date, IST). Every table then gets a Selected dates view, compared with the same number of days just before; the overview cards switch to the selected dates too.</dd>
+        <dt>Per day / Δ</dt><dd>Partial periods (the current month so far and the current week) are compared per day. Δ is against the previous period; pp = percentage points.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- VOLUME -->
+  <section class="cx-page" id="volume" data-page="volume" hidden>
+    <div class="cx-card" id="card-volume">
+      <h3>Ticket volume comparison</h3>
+      <p class="cx-note">Tickets created per period. Δ compares tickets per day in the latest period with the one before it.</p>
+      <div class="cx-ctrl">
+        <div class="cx-seg" data-group="vol-dim"><button data-v="category" aria-pressed="true">Category</button><button data-v="subcategory" aria-pressed="false">Sub-category</button><button data-v="queue" aria-pressed="false">Queue</button><button data-v="workstream" aria-pressed="false">Workstream</button><button data-v="channel" aria-pressed="false">Chat / call</button></div>
+        <div class="cx-seg" data-group="vol-pt"><button data-v="month" aria-pressed="true">Last 3 months + MTD</button><button data-v="week" aria-pressed="false">This month by week</button><button data-v="custom" aria-pressed="false" hidden>Selected dates</button></div>
+        <input type="search" id="vol-q" placeholder="Search" aria-label="Search rows">
+      </div>
+      <div class="cx-tw"><table id="tbl-volume" data-source="breakdown"></table></div>
+    </div>
+  </section>
+
+  <!-- RESOLUTION -->
+  <section class="cx-page" id="resolution" data-page="resolution" hidden>
+    <div class="cx-card" id="card-res">
+      <h3>Resolution within time limits</h3>
+      <p class="cx-note">Cumulative share of tickets resolved within 4, 12, 24, 48 and 72 hours of creation. Δ ≤24h is against the previous period.</p>
+      <div class="cx-ctrl">
+        <div class="cx-seg" data-group="res-dim"><button data-v="category" aria-pressed="true">Category</button><button data-v="subcategory" aria-pressed="false">Sub-category</button><button data-v="queue" aria-pressed="false">Queue</button><button data-v="workstream" aria-pressed="false">Workstream</button><button data-v="channel" aria-pressed="false">Chat / call</button></div>
+        <select id="res-period" aria-label="Period" data-source="breakdown"></select>
+        <input type="search" id="res-q" placeholder="Search" aria-label="Search rows">
+      </div>
+      <div class="cx-tw"><table id="tbl-res" data-source="breakdown"></table></div>
+    </div>
+    <div class="cx-card" id="card-res24">
+      <h3>Resolved ≤24h across periods</h3>
+      <p class="cx-note">Same breakdown as above, ≤24h only, so the trend for each row reads across.</p>
+      <div class="cx-ctrl">
+        <div class="cx-seg" data-group="res24-pt"><button data-v="month" aria-pressed="true">Last 3 months + MTD</button><button data-v="week" aria-pressed="false">This month by week</button><button data-v="custom" aria-pressed="false" hidden>Selected dates</button></div>
+      </div>
+      <div class="cx-tw"><table id="tbl-res24" data-source="breakdown"></table></div>
+    </div>
+  </section>
+
+  <!-- REOPEN -->
+  <section class="cx-page" id="reopen" data-page="reopen" hidden>
+    <div class="cx-card" id="card-reopen">
+      <h3>Reopen rate comparison</h3>
+      <p class="cx-note">Tickets reopened at least once ÷ resolved tickets. Δ is in percentage points against the previous period.</p>
+      <div class="cx-ctrl">
+        <div class="cx-seg" data-group="ro-dim"><button data-v="category" aria-pressed="true">Category</button><button data-v="subcategory" aria-pressed="false">Sub-category</button><button data-v="queue" aria-pressed="false">Queue</button><button data-v="workstream" aria-pressed="false">Workstream</button><button data-v="channel" aria-pressed="false">Chat / call</button></div>
+        <div class="cx-seg" data-group="ro-pt"><button data-v="month" aria-pressed="true">Last 3 months + MTD</button><button data-v="week" aria-pressed="false">This month by week</button><button data-v="custom" aria-pressed="false" hidden>Selected dates</button></div>
+        <input type="search" id="ro-q" placeholder="Search" aria-label="Search rows">
+      </div>
+      <div class="cx-tw"><table id="tbl-reopen" data-source="breakdown"></table></div>
+    </div>
+  </section>
+
+  <!-- P95 -->
+  <section class="cx-page" id="p95" data-page="p95" hidden>
+    <div class="cx-card" id="card-p95">
+      <h3>P95 resolution time comparison</h3>
+      <p class="cx-note">Hours from ticket creation to final resolution within which 95% of resolved tickets were closed. Lower is better. Δ is in hours against the previous period.</p>
+      <div class="cx-ctrl">
+        <div class="cx-seg" data-group="p95-dim"><button data-v="category" aria-pressed="true">Category</button><button data-v="subcategory" aria-pressed="false">Sub-category</button><button data-v="queue" aria-pressed="false">Queue</button><button data-v="workstream" aria-pressed="false">Workstream</button><button data-v="channel" aria-pressed="false">Chat / call</button></div>
+        <div class="cx-seg" data-group="p95-pt"><button data-v="month" aria-pressed="true">Last 3 months + MTD</button><button data-v="week" aria-pressed="false">This month by week</button><button data-v="custom" aria-pressed="false" hidden>Selected dates</button></div>
+        <input type="search" id="p95-q" placeholder="Search" aria-label="Search rows">
+      </div>
+      <div class="cx-tw"><table id="tbl-p95" data-source="breakdown"></table></div>
+    </div>
+  </section>
+
+  <!-- OPS -->
+  <section class="cx-page" id="ops" data-page="ops" hidden>
+    <div class="cx-card" id="card-backlog">
+      <h3>Open tickets by age</h3>
+      <p class="cx-note">Tickets created in the dashboard period that are still unresolved, by hours since creation.</p>
+      <div class="cx-ctrl"><div class="cx-seg" data-group="bl-dim"><button data-v="category" aria-pressed="true">Category</button><button data-v="queue" aria-pressed="false">Queue</button><button data-v="workstream" aria-pressed="false">Workstream</button><button data-v="channel" aria-pressed="false">Chat / call</button></div></div>
+      <div class="cx-tw"><table id="tbl-backlog" data-source="backlog"></table></div>
+    </div>
+    <div class="cx-card" id="card-zone">
+      <h3>Zone scorecard</h3>
+      <p class="cx-note">Per zone for the chosen month. Δ per day is against the month before.</p>
+      <div class="cx-ctrl"><select id="zone-period" aria-label="Month" data-source="zone"></select></div>
+      <div class="cx-tw"><table id="tbl-zone" data-source="zone" data-row-key="period,zone"></table></div>
+    </div>
+    <div class="cx-card" id="card-partner">
+      <h3>Partner watchlist, <span class="cx-curlbl">this month</span></h3>
+      <p class="cx-note">The 50 partners with the most tickets in the current month. Δ per day is against the previous month.</p>
+      <div class="cx-tw"><table id="tbl-partner" data-source="partner" data-row-key="partner_id"></table></div>
+    </div>
+    <div class="cx-grid">
+      <div class="cx-card" id="card-sla">
+        <h3>SLA bucket by month</h3>
+        <p class="cx-note">RESOLUTION_TAT_BUCKET as set on the ticket.</p>
+        <div class="cx-legend" id="legend-sla"></div>
+        <div class="cx-chart" id="chart-sla" data-source="sla" style="min-height:200px"></div>
+      </div>
+      <div class="cx-card" id="card-heat">
+        <h3>When tickets arrive, <span class="cx-curlbl">this month</span></h3>
+        <p class="cx-note">Tickets created by weekday and hour (IST). Darker means more tickets.</p>
+        <div class="cx-chart" id="chart-heat" data-source="hourly" style="min-height:220px"></div>
+      </div>
+    </div>
+    <div class="cx-card" id="card-channel">
+      <h3>Channel mix</h3>
+      <p class="cx-note">Share of tickets by TICKET_SOURCE. Blank source is shown as "App / direct (blank)".</p>
+      <div class="cx-tw"><table id="tbl-channel"></table></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+const enc = encodeURIComponent;
+const fInt = d3.format(',');
+const fPct = (v) => v == null ? '—' : d3.format('.1%')(v);
+const fPP = (v) => v == null ? '—' : (v > 0 ? '+' : v < 0 ? '−' : '±') + d3.format('.1f')(Math.abs(v) * 100) + ' pp';
+const fChg = (v) => v == null ? '—' : (v > 0 ? '+' : v < 0 ? '−' : '±') + d3.format('.1%')(Math.abs(v));
+const fNum1 = (v) => v == null ? '—' : d3.format(',.1f')(v);
+const DIMLABEL = { category: 'Category', subcategory: 'Category › sub-category', queue: 'Queue', workstream: 'Workstream', channel: 'Chat / call' };
+const state = { tab: 'overview', 'vol-dim': 'category', 'vol-pt': 'month', 'res-dim': 'category', 'res24-pt': 'month', 'ro-dim': 'category', 'ro-pt': 'month', 'p95-dim': 'category', 'p95-pt': 'month', 'bl-dim': 'category', resPeriod: null, zonePeriod: null, sorts: {} };
+
+function rowsOf(id) { const d = dash.data(id); return d.status === 'ok' && Array.isArray(d.data) ? d.data : null; }
+/* Category / queue multi-select. Datasets hold additive ticket counts per category × sub-category × queue;
+   the page sums the rows that match the selection and works rates out from those sums. Empty list = all. */
+function S() { const p = dash.params(); const l = (v) => Array.isArray(v) ? v : []; return { wss: l(p.wss), chs: l(p.chs), cats: l(p.cats), queues: l(p.queues), from: p.from || null, to: p.to || null }; }
+function keep(r, s) { return (!s.wss.length || s.wss.includes(r.ws)) && (!s.chs.length || s.chs.includes(r.ch)) && (!s.cats.length || s.cats.includes(r.cat)) && (!s.queues.length || s.queues.includes(r.q)); }
+function scopeLabel() {
+  const s = S(), p = [];
+  if (s.wss.length) p.push(s.wss.join(' + '));
+  if (s.chs.length) p.push(s.chs.join(' + ') + ' tickets');
+  if (s.cats.length) p.push(s.cats.length === 1 ? s.cats[0] : s.cats.length + ' categories');
+  if (s.queues.length) p.push(s.queues.length === 1 ? 'queue ' + s.queues[0] : s.queues.length + ' queues');
+  return p.join(' · ');
+}
+/* Date range: from/to (YYYY-MM-DD, created date IST) compared with the same number of days just before */
+const dayMs = 86400000;
+const toDay = (t) => new Date(t).toISOString().slice(0, 10);
+const fmtDay = (d) => d3.utcFormat('%b %-d')(new Date(d + 'T00:00:00Z'));
+function rangeLabel(a, b) {
+  if (a === b) return fmtDay(a);
+  return a.slice(0, 7) === b.slice(0, 7) ? fmtDay(a) + '–' + Number(b.slice(8)) : fmtDay(a) + ' – ' + fmtDay(b);
+}
+function dayBounds() { const d = rowsOf('daily'); if (!d || !d.length) return null; let lo = d[0].day, hi = d[0].day; for (const r of d) { if (r.day < lo) lo = r.day; if (r.day > hi) hi = r.day; } return { lo, hi }; }
+function DR() {
+  const p = dash.params(); let a = p.from || p.to, b = p.to || p.from; const bd = dayBounds();
+  if (!a || !b || !bd) return null;
+  if (a > b) [a, b] = [b, a];
+  const n = Math.round((Date.parse(b) - Date.parse(a)) / dayMs) + 1;
+  const pto = toDay(Date.parse(a) - dayMs); let pfrom = toDay(Date.parse(a) - n * dayMs);
+  if (pfrom < bd.lo) pfrom = bd.lo;
+  const pn = pto < pfrom ? 0 : Math.round((Date.parse(pto) - Date.parse(pfrom)) / dayMs) + 1;
+  return { from: a, to: b, days: n, pfrom, pto, pdays: pn, label: rangeLabel(a, b), plabel: pn ? rangeLabel(pfrom, pto) : 'previous days' };
+}
+const memo = {};
+function cached(id, build) {
+  const raw = rowsOf(id); if (!raw) return null;
+  const k = JSON.stringify(S()) + (rowsOf('daily') ? '+d' : '');
+  if (memo[id] && memo[id].raw === raw && memo[id].k === k) return memo[id].v;
+  const v = build(raw, S()); memo[id] = { raw, k, v }; return v;
+}
+/* Resolution-time histogram (see breakdown.sql): bucket b covers [lo(b), lo(b+1)) minutes */
+const NB = 421;
+const bLo = (b) => b < 96 ? b * 15 : b < 240 ? 1440 + (b - 96) * 60 : 10080 + (b - 240) * 1440;
+const histCache = new WeakMap();
+function histOf(r) {
+  r = r.__src || r; let h = histCache.get(r);
+  if (!h) { h = r.hist ? String(r.hist).split(',').map((p) => p.split(':').map(Number)) : []; histCache.set(r, h); }
+  return h;
+}
+/* p-th percentile in hours, interpolated inside the bucket */
+function pctile(hist, p) {
+  let total = 0; for (let b = 0; b < NB; b++) total += hist[b];
+  if (!total) return null;
+  const target = p * total; let cum = 0;
+  for (let b = 0; b < NB; b++) {
+    const n = hist[b]; if (!n) continue;
+    if (cum + n >= target) return (bLo(b) + (bLo(b + 1) - bLo(b)) * ((target - cum) / n)) / 60;
+    cum += n;
+  }
+  return bLo(NB) / 60;
+}
+const SUMS = ['tickets', 'resolved', 'n4', 'n12', 'n24', 'n48', 'n72', 'n72p', 'reopened', 'res_timed', 'res_mins', 'repeat7'];
+function bRows() {
+  return cached('breakdown', (raw0, s) => {
+    let raw = raw0; const dr = DR(), daily = rowsOf('daily');
+    if (dr && daily) {
+      const extra = [];
+      for (const r of daily) {
+        const period = r.day >= dr.from && r.day <= dr.to ? '2-sel' : (r.day >= dr.pfrom && r.day <= dr.pto ? '1-prev' : null);
+        if (period) extra.push({ ...r, __src: r, ptype: 'custom', period, period_label: period === '2-sel' ? dr.label : dr.plabel, days: period === '2-sel' ? dr.days : dr.pdays });
+      }
+      raw = raw0.concat(extra);
+    }
+    const m = new Map();
+    const add = (r, dim, val) => {
+      const k = r.period + '|' + dim + '|' + val;
+      let o = m.get(k);
+      if (!o) { o = { ptype: r.ptype, period: r.period, period_label: r.period_label, days: Number(r.days), dim, val, hist: new Float64Array(NB) }; SUMS.forEach((f) => { o[f] = 0; }); m.set(k, o); }
+      SUMS.forEach((f) => { o[f] += Number(r[f]) || 0; });
+      for (const [b, n] of histOf(r)) o.hist[b] += n;
+    };
+    raw.forEach((r) => { if (!keep(r, s)) return; add(r, 'all', 'All tickets'); add(r, 'category', r.cat); add(r, 'subcategory', r.cs); add(r, 'queue', r.q); add(r, 'workstream', r.ws); add(r, 'channel', r.ch); });
+    const rows = [...m.values()];
+    const tot = new Map(); rows.forEach((o) => { if (o.dim === 'all') tot.set(o.period, o.tickets); });
+    rows.forEach((o) => {
+      const t = o.tickets;
+      o.per_day = t / o.days; o.share_pct = t / (tot.get(o.period) || t);
+      o.res_pct = o.resolved / t; o.le4_pct = o.n4 / t; o.le12_pct = o.n12 / t; o.le24_pct = o.n24 / t; o.le48_pct = o.n48 / t; o.le72_pct = o.n72 / t;
+      o.gt72_pct = o.n72p / t; o.open_pct = 1 - o.resolved / t;
+      o.reopen_pct = o.resolved ? o.reopened / o.resolved : null;
+      o.avg_res_hrs = o.res_timed ? o.res_mins / o.res_timed / 60 : null;
+      o.repeat7_pct = o.repeat7 / t;
+      o.p50_hrs = pctile(o.hist, 0.5); o.p90_hrs = pctile(o.hist, 0.9); o.p95_hrs = pctile(o.hist, 0.95);
+    });
+    const I = new Map(rows.map((o) => [o.period + '|' + o.dim + '|' + o.val, o]));
+    ['month', 'week', 'custom'].forEach((pt) => {
+      const ps = [...new Set(raw.filter((r) => r.ptype === pt).map((r) => r.period))].sort();
+      rows.filter((o) => o.ptype === pt).forEach((o) => {
+        const i = ps.indexOf(o.period); const prev = i > 0 ? I.get(ps[i - 1] + '|' + o.dim + '|' + o.val) : null;
+        o.per_day_chg_pct = prev ? o.per_day / prev.per_day - 1 : null;
+        o.le24_chg_pp = prev ? o.le24_pct - prev.le24_pct : null;
+        o.reopen_chg_pp = prev && o.reopen_pct != null && prev.reopen_pct != null ? o.reopen_pct - prev.reopen_pct : null;
+        o.p95_chg_hrs = prev && o.p95_hrs != null && prev.p95_hrs != null ? o.p95_hrs - prev.p95_hrs : null;
+      });
+    });
+    return rows;
+  });
+}
+function filtered(id) {
+  if (id === 'daily') return cached('daily', (raw, s) => {
+    const days = [...new Set(raw.map((r) => r.day))].sort();
+    const m = new Map(days.map((d) => [d, { day: d, tickets: 0, n24: 0, resolved: 0, reopened: 0 }]));
+    raw.forEach((r) => { if (!keep(r, s)) return; const o = m.get(r.day); o.tickets += Number(r.tickets); o.n24 += Number(r.n24); o.resolved += Number(r.resolved); o.reopened += Number(r.reopened); });
+    const out = days.map((d) => m.get(d));
+    if (!out.some((o) => o.tickets)) return [];
+    out.forEach((o, i) => {
+      const w = out.slice(Math.max(0, i - 6), i + 1); o.avg7 = d3.mean(w, (x) => x.tickets);
+      o.le24_pct = o.tickets ? o.n24 / o.tickets : null; o.reopen_pct = o.resolved ? o.reopened / o.resolved : null;
+    });
+    return out;
+  });
+  if (id === 'backlog') return cached('backlog', (raw, s) => {
+    const m = new Map();
+    const add = (r, dim, val) => { const k = dim + '|' + val + '|' + r.age_bucket; const o = m.get(k) || { dim, val, age_bucket: r.age_bucket, age_order: Number(r.age_order), tickets: 0 }; o.tickets += Number(r.tickets); m.set(k, o); };
+    raw.forEach((r) => { if (!keep(r, s)) return; add(r, 'all', 'All open'); add(r, 'category', r.cat); add(r, 'queue', r.q); add(r, 'workstream', r.ws); add(r, 'channel', r.ch); });
+    return [...m.values()];
+  });
+  if (id === 'backlog_totals') {
+    const b = filtered('backlog'); if (!b) return null;
+    const m = new Map();
+    b.forEach((r) => { const k = r.dim + '|' + r.val; const o = m.get(k) || { dim: r.dim, val: r.val, tickets: 0, over7d: 0 }; o.tickets += r.tickets; if (r.age_order >= 5) o.over7d += r.tickets; m.set(k, o); });
+    return [...m.values()];
+  }
+  return rowsOf(id);
+}
+function fw(o) { return o; }
+
+/* multi-select dropdowns */
+const MS = [{ id: 'ms-ws', param: 'wss', field: 'ws', all: 'All workstreams', many: 'workstreams' },
+            { id: 'ms-ch', param: 'chs', field: 'ch', all: 'Chat and call', many: 'channels' },
+            { id: 'ms-cat', param: 'cats', field: 'cat', all: 'All categories', many: 'categories' },
+            { id: 'ms-queue', param: 'queues', field: 'q', all: 'All queues', many: 'queues' }];
+const fReset = document.getElementById('f-reset');
+fReset.addEventListener('click', () => dash.setParams({ wss: [], chs: [], cats: [], queues: [], from: null, to: null }));
+function closeAll() { document.querySelectorAll('.cx-ms-pop').forEach((p) => { p.hidden = true; }); document.querySelectorAll('.cx-ms-btn').forEach((b) => b.setAttribute('aria-expanded', 'false')); }
+document.addEventListener('click', closeAll);
+MS.forEach((cfg) => {
+  const root = document.getElementById(cfg.id);
+  const btn = root.querySelector('.cx-ms-btn'), pop = root.querySelector('.cx-ms-pop'), list = root.querySelector('.cx-ms-list'), search = root.querySelector('input[type="search"]');
+  btn.addEventListener('click', (e) => { e.stopPropagation(); const open = pop.hidden; closeAll(); if (open) { pop.hidden = false; btn.setAttribute('aria-expanded', 'true'); search.focus(); } });
+  pop.addEventListener('click', (e) => e.stopPropagation());
+  root.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeAll(); btn.focus(); } });
+  list.addEventListener('change', () => dash.setParams({ [cfg.param]: [...list.querySelectorAll('input:checked')].map((i) => i.value) }));
+  root.querySelector('[data-act="clear"]').addEventListener('click', () => dash.setParams({ [cfg.param]: [] }));
+  root.querySelector('[data-act="shown"]').addEventListener('click', () => dash.setParams({ [cfg.param]: [...list.querySelectorAll('label:not([hidden]) input')].map((i) => i.value) }));
+  search.addEventListener('input', () => list.querySelectorAll('label').forEach((l) => { l.hidden = !matches(search.value, l.dataset.v); }));
+});
+/* date inputs */
+const fFrom = document.getElementById('f-from'), fTo = document.getElementById('f-to');
+const PT_GROUPS = ['vol-pt', 'res24-pt', 'ro-pt', 'p95-pt'];
+function setPt(v) {
+  PT_GROUPS.forEach((g) => { state[g] = v; document.querySelectorAll(`[data-group="${g}"] button`).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === v))); });
+}
+/* Each date is kept as soon as it is picked; one date alone shows that single day. */
+function onDate(e) {
+  const el = e.target, key = el === fFrom ? 'from' : 'to';
+  if (!el.value) { dash.setParams({ [key]: null }); return; }
+  const ok = el.validity.valid && (!el.min || el.value >= el.min) && (!el.max || el.value <= el.max);
+  if (!ok) return; // half-typed or outside the data: wait for a whole date in range
+  setPt('custom'); state.resPeriod = '2-sel';
+  dash.setParams({ [key]: el.value });
+}
+[fFrom, fTo].forEach((el) => { el.addEventListener('change', onDate); el.addEventListener('blur', () => drawDates()); });
+function drawDates() {
+  const bd = dayBounds(), p = dash.params(), dr = DR();
+  if (bd) [fFrom, fTo].forEach((el) => { el.min = bd.lo; el.max = bd.hi; });
+  if (document.activeElement !== fFrom) fFrom.value = p.from || '';
+  if (document.activeElement !== fTo) fTo.value = p.to || '';
+  document.querySelectorAll('.cx-seg [data-v="custom"]').forEach((b) => { b.hidden = !dr; });
+  if (!dr) {
+    if (PT_GROUPS.some((g) => state[g] === 'custom')) setPt('month');
+    if (state.resPeriod === '1-prev' || state.resPeriod === '2-sel') state.resPeriod = null;
+  }
+}
+function drawFilters() {  const raw = rowsOf('breakdown'); const s = S();
+  MS.forEach((cfg) => {
+    const root = document.getElementById(cfg.id); const list = root.querySelector('.cx-ms-list'); const chosen = s[cfg.param];
+    if (raw && !list.childElementCount) {
+      const m = new Map(); raw.filter((r) => r.ptype === 'month').forEach((r) => m.set(r[cfg.field], (m.get(r[cfg.field]) || 0) + Number(r.tickets)));
+      [...m.entries()].sort((a, b) => b[1] - a[1]).forEach(([v, n]) => {
+        const l = document.createElement('label'); l.dataset.v = v;
+        const i = document.createElement('input'); i.type = 'checkbox'; i.value = v;
+        const t = document.createElement('span'); t.textContent = v;
+        const c = document.createElement('small'); c.textContent = d3.format(',')(n);
+        l.append(i, t, c); list.append(l);
+      });
+    }
+    list.querySelectorAll('input').forEach((i) => { i.checked = chosen.includes(i.value); });
+    const btn = root.querySelector('.cx-ms-btn');
+    root.querySelector('.cx-ms-txt').textContent = !chosen.length ? cfg.all : chosen.length === 1 ? chosen[0] : chosen.length + ' ' + cfg.many;
+    btn.classList.toggle('on', chosen.length > 0);
+  });
+  fReset.hidden = !s.wss.length && !s.chs.length && !s.cats.length && !s.queues.length && !s.from && !s.to;
+  drawDates();
+  document.getElementById('f-scope').textContent = state.tab === 'ops' ? 'Workstream, chat/call, category and queue filters apply to open tickets by age; the date range does not (it shows tickets open now). Zone, partner, SLA, arrivals and channel tables show all tickets for the full period.' : '';
+}
+function failed(id, el) {
+  const s = dash.data(id).status;
+  if (s === 'error' || s === 'connect' || s === 'declined') { el.replaceChildren(); const f = document.createElement('div'); f.className = 'cx-fail'; f.textContent = 'Failed to load'; el.append(f); return true; }
+  return false;
+}
+const COMPUTED = new Set(['breakdown', 'backlog', 'backlog_totals', 'daily']);
+function whereStr(o) { return Object.entries(o).map(([k, v]) => k + '=' + enc(v)).join('&'); }
+function mk(tag, src, field, where, text, cls) {
+  const e = document.createElement(tag);
+  if (src && !COMPUTED.has(src)) { e.dataset.source = src; e.dataset.field = field; if (where) e.dataset.where = whereStr(where); }
+  e.textContent = text; if (cls) e.className = cls; return e;
+}
+function signCls(v, upIsBad) { if (v == null || Math.abs(v) < 0.0005) return ''; return (v > 0) === upIsBad ? 'cx-bad' : 'cx-good'; }
+function heat(td, v, good) {
+  if (v == null) return;
+  const c = good ? dash.colors[0] : 'var(--cds-chart-status-critical)';
+  td.style.background = `color-mix(in srgb, ${c} ${Math.round(Math.min(1, v) * 38)}%, transparent)`;
+}
+function matches(q, s) { return !q || String(s).toLowerCase().includes(q.toLowerCase()); }
+
+/* tabs */
+document.querySelectorAll('.cx-tab').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab, true)));
+function showTab(t, link) {
+  state.tab = t;
+  document.querySelectorAll('.cx-tab').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
+  document.querySelectorAll('[data-page]').forEach((p) => { p.hidden = p.dataset.page !== t; });
+  if (link) dash.setLink(t);
+  render();
+}
+/* segmented controls */
+document.querySelectorAll('.cx-seg').forEach((g) => g.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  state[g.dataset.group] = b.dataset.v;
+  g.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  render();
+}));
+['vol-q', 'res-q', 'ro-q', 'p95-q'].forEach((id) => document.getElementById(id).addEventListener('input', () => render()));
+document.getElementById('res-period').addEventListener('change', (e) => { state.resPeriod = e.target.value; render(); });
+document.getElementById('zone-period').addEventListener('change', (e) => { state.zonePeriod = e.target.value; render(); });
+
+/* ---------- helpers for breakdown ---------- */
+function periodsOf(rows, ptype) {
+  if (ptype === 'custom') { const dr = DR(); return dr ? [{ period: '1-prev', label: dr.plabel, days: dr.pdays }, { period: '2-sel', label: dr.label, days: dr.days }] : []; }
+  const m = new Map(); (rowsOf('breakdown') || []).filter((r) => r.ptype === ptype).forEach((r) => m.set(r.period, { period: r.period, label: r.period_label, days: Number(r.days) }));
+  return [...m.values()].sort((a, b) => a.period.localeCompare(b.period));
+}
+/* current and previous month, worked out from the data so the page rolls over each month */
+function C() {
+  const ms = periodsOf(null, 'month'); const cur = ms[ms.length - 1] || {}, prev = ms[ms.length - 2] || {};
+  const dr = DR();
+  if (dr) return { cur: '2-sel', prev: '1-prev', curLabel: dr.label, prevLabel: dr.plabel, first: ms[0] };
+  return { cur: cur.period, prev: prev.period, curLabel: cur.label || 'This month', prevLabel: prev.label || 'last month', first: ms[0] };
+}
+function drawRange() {
+  const raw = rowsOf('breakdown'); const el = document.getElementById('cx-range'); if (!raw || !raw.length) return;
+  const c = C(); const asof = raw[0].asof ? new Date(raw[0].asof.replace(' ', 'T') + ':00Z') : null;
+  const start = c.first ? new Date(c.first.period + '-01T00:00:00Z') : null;
+  el.textContent = 'Tickets by created date (IST), ' + (start ? d3.utcFormat('%b %-d')(start) : '') + (asof ? ' – ' + d3.utcFormat('%b %-d, %Y')(asof) + ' (data up to ' + d3.utcFormat('%-I:%M %p')(asof).toLowerCase() + ' on ' + d3.utcFormat('%b %-d')(asof) + ')' : '') + '. One row per ticket from PROD_DB.PUBLIC.SERVICE_TICKET_MODEL.';
+  document.querySelectorAll('.cx-curlbl').forEach((e) => { e.textContent = c.curLabel; });
+  if (!state.resPeriod) state.resPeriod = c.cur;
+  if (!state.zonePeriod) state.zonePeriod = c.cur;
+}
+function idx(rows) { const m = new Map(); rows.forEach((r) => m.set(r.period + '|' + r.dim + '|' + r.val, r)); return m; }
+
+/* generic pivot: one row per value, a column per period, then latest-period extras */
+function pivot(table, { dim, ptype, field, fmt, extras, q, heatGood, heatBad, heatFn }) {
+  const rows = bRows(); table.replaceChildren();
+  if (!rows) return;
+  const per = periodsOf(rows, ptype), I = idx(rows), last = per[per.length - 1];
+  const vals = [...new Set(rows.filter((r) => r.dim === dim && r.ptype === ptype).map((r) => r.val))]
+    .map((v) => ({ v, n: Number((I.get(last.period + '|' + dim + '|' + v) || {}).tickets || 0) }))
+    .sort((a, b) => b.n - a.n).filter((o) => matches(q, o.v));
+  const thead = table.createTHead().insertRow();
+  const th0 = document.createElement('th'); th0.textContent = DIMLABEL[dim]; thead.append(th0);
+  per.forEach((p) => { const th = document.createElement('th'); th.textContent = p.label + (ptype === 'month' && p.days < 28 ? ` (${p.days}d)` : ''); thead.append(th); });
+  extras.forEach((x, i) => { const th = document.createElement('th'); th.textContent = x.label.replace('{last}', last.label); if (i === 0) th.className = 'cx-grp'; thead.append(th); });
+  const tb = table.createTBody();
+  const line = (d, v, total) => {
+    const tr = tb.insertRow(); if (total) tr.className = 'cx-total';
+    const c0 = tr.insertCell(); c0.textContent = total ? 'All tickets' : v;
+    per.forEach((p) => {
+      const r = I.get(p.period + '|' + d + '|' + v); const td = tr.insertCell();
+      if (!r) { td.textContent = '—'; return; }
+      
+      td.textContent = fmt(r[field]);
+      if (heatGood) heat(td, r[field], true); if (heatBad) heat(td, Math.min(1, r[field] * 3), false);
+      if (heatFn && r[field] != null) heat(td, heatFn(r[field]), false);
+    });
+    extras.forEach((x, i) => {
+      const r = I.get(last.period + '|' + d + '|' + v); const td = tr.insertCell(); if (i === 0) td.classList.add('cx-grp');
+      if (!r || r[x.field] == null) { td.textContent = '—'; return; }
+      
+      td.textContent = x.fmt(r[x.field]); if (x.cls) td.classList.add(...[x.cls(r[x.field])].filter(Boolean));
+    });
+  };
+  line('all', 'All tickets', true);
+  vals.forEach((o) => line(dim, o.v, false));
+}
+
+/* sortable keyed table */
+function keyed(table, { cols, rows, key, sortId, defSort }) {
+  table.replaceChildren();
+  const s = state.sorts[sortId] || (state.sorts[sortId] = { f: defSort, dir: -1 });
+  const thr = table.createTHead().insertRow();
+  cols.forEach((c) => {
+    const th = document.createElement('th'); if (table.dataset.rowKey) th.dataset.field = c.field;
+    th.setAttribute('aria-sort', s.f === c.field ? (s.dir < 0 ? 'descending' : 'ascending') : 'none');
+    const b = document.createElement('button'); b.textContent = c.label + (s.f === c.field ? (s.dir < 0 ? ' ↓' : ' ↑') : '');
+    b.addEventListener('click', () => { if (s.f === c.field) s.dir = -s.dir; else { s.f = c.field; s.dir = c.text ? 1 : -1; } render(); });
+    th.append(b); thr.append(th);
+  });
+  const sc = cols.find((c) => c.field === s.f);
+  const sorted = rows.slice().sort((a, b) => {
+    if (a.__pin) return -1; if (b.__pin) return 1;
+    const x = a[s.f], y = b[s.f];
+    if (sc && sc.text) return s.dir * String(x).localeCompare(String(y));
+    return s.dir * ((x == null ? -Infinity : Number(x)) - (y == null ? -Infinity : Number(y)));
+  });
+  const tb = table.createTBody();
+  sorted.forEach((r) => {
+    const tr = tb.insertRow(); if (table.dataset.rowKey) tr.dataset.key = key.map((k) => enc(r[k])).join(','); if (r.__pin) tr.className = 'cx-total';
+    cols.forEach((c) => {
+      const td = tr.insertCell(); const v = r[c.field];
+      td.textContent = c.fmt ? c.fmt(v) : v;
+      if (c.heatGood) heat(td, v, true); if (c.heatBad && v != null) heat(td, Math.min(1, v * 3), false);
+      if (c.cls) { const k = c.cls(v); if (k) td.classList.add(k); }
+    });
+  });
+}
+
+/* tooltip */
+function tip(box) { let t = box.querySelector('.cx-tip'); if (!t) { t = document.createElement('div'); t.className = 'cx-tip'; t.hidden = true; box.append(t); } return t; }
+function placeTip(t, box, x, y) {
+  t.hidden = false; const w = t.offsetWidth, h = t.offsetHeight, W = box.clientWidth;
+  let left = x + 12; if (left + w > W) left = x - w - 12; if (left < 0) left = 0;
+  t.style.left = left + 'px'; t.style.top = Math.max(0, y - h - 8) + 'px';
+}
+function tipLines(t, head, lines) {
+  t.replaceChildren(); const h = document.createElement('div'); h.className = 'h'; h.textContent = head; t.append(h);
+  lines.forEach(([color, name, val]) => { const d = document.createElement('div'); if (color) { const i = document.createElement('i'); i.style.background = color; d.append(i); } d.append(document.createTextNode(name + ': ' + val)); t.append(d); });
+}
+function cleanAxis(g) { g.attr('font-size', null).attr('font-family', null); g.selectAll('.domain').attr('stroke', 'var(--cds-chart-axis)'); g.selectAll('.tick line').attr('stroke', 'var(--cds-chart-grid)'); }
+
+/* ---------- overview ---------- */
+function drawTakeaway() {
+  const el = document.getElementById('cx-takeaway'); const rows = bRows();
+  if (!rows) { if (!failed('breakdown', el)) {} return; }
+  const I = idx(rows); const o = I.get(C().cur + '|all|All tickets');
+  el.replaceChildren();
+  const sc = scopeLabel();
+  if (!o) { el.textContent = sc ? `No tickets in ${C().curLabel} for ${sc}.` : 'No tickets in ' + C().curLabel + '.'; return; }
+  const w = fw({ period: C().cur, dim: 'all', val: 'All tickets' });
+  const b = (f, txt) => { const e = mk('b', 'breakdown', f, w, txt); return e; };
+  el.append((sc ? `For ${sc}, ` : '') + C().curLabel + ' averages ',b('per_day', fNum1(o.per_day)), ' tickets a day (', mk('span', 'breakdown', 'per_day_chg_pct', w, fChg(o.per_day_chg_pct)), ' vs ' + C().prevLabel + '). ',
+    b('le24_pct', fPct(o.le24_pct)), ' were resolved within 24 hours (', mk('span', 'breakdown', 'le24_chg_pp', w, fPP(o.le24_chg_pp)), '), and the reopen rate is ', b('reopen_pct', fPct(o.reopen_pct)),
+    ' (', mk('span', 'breakdown', 'reopen_chg_pp', w, fPP(o.reopen_chg_pp)), ').',
+    Math.abs(o.reopen_chg_pp || 0) > Math.abs(o.le24_chg_pp || 0) && o.reopen_chg_pp > 0 ? ' Reopens moved more than resolution speed, so they are the number to watch this month.' : '');
+}
+function drawTiles() {
+  const el = document.getElementById('cx-tiles'); const rows = bRows(); const bt = filtered('backlog_totals');
+  if (!rows) { if (!failed('breakdown', el) && !el.childElementCount) { for (let i = 0; i < 6; i++) { const d = document.createElement('div'); d.className = 'cx-tile dash-skeleton'; d.style.minHeight = '96px'; el.append(d); } } return; }
+  el.replaceChildren();
+  const I = idx(rows); const W = fw({ period: C().cur, dim: 'all', val: 'All tickets' }), S = fw({ period: C().prev, dim: 'all', val: 'All tickets' });
+  const o = I.get(C().cur + '|all|All tickets'), p = I.get(C().prev + '|all|All tickets') || {};
+  if (!o) { const e = document.createElement('div'); e.className = 'cx-empty'; e.textContent = 'No ' + C().curLabel + ' tickets for this filter.'; el.append(e); return; }
+  const tile = (label, valueEl, deltaEls) => { const t = document.createElement('div'); t.className = 'cx-tile'; const l = document.createElement('div'); l.className = 'cx-tile-l'; l.textContent = label; valueEl.classList.add('cx-tile-v'); const d = document.createElement('div'); d.className = 'cx-tile-d'; d.append(...deltaEls); t.append(l, valueEl, d); el.append(t); };
+  tile('Tickets per day · ' + C().curLabel, mk('div', 'breakdown', 'per_day', W, fNum1(o.per_day)), [mk('span', 'breakdown', 'per_day_chg_pct', W, fChg(o.per_day_chg_pct), signCls(o.per_day_chg_pct, true)), ' vs ' + C().prevLabel + ' · ', mk('span', 'breakdown', 'tickets', W, fInt(o.tickets)), ' tickets']);
+  tile('Resolved ≤24h · ' + C().curLabel, mk('div', 'breakdown', 'le24_pct', W, fPct(o.le24_pct)), [mk('span', 'breakdown', 'le24_chg_pp', W, fPP(o.le24_chg_pp), signCls(o.le24_chg_pp, false)), ' vs ' + C().prevLabel]);
+  tile('Resolved after 72h · ' + C().curLabel, mk('div', 'breakdown', 'gt72_pct', W, fPct(o.gt72_pct)), [C().prevLabel + ' ', mk('span', 'breakdown', 'gt72_pct', S, fPct(p.gt72_pct))]);
+  tile('Reopen rate · ' + C().curLabel, mk('div', 'breakdown', 'reopen_pct', W, fPct(o.reopen_pct)), [mk('span', 'breakdown', 'reopen_chg_pp', W, fPP(o.reopen_chg_pp), signCls(o.reopen_chg_pp, true)), ' vs ' + C().prevLabel]);
+  tile('Repeat within 7 days · ' + C().curLabel, mk('div', 'breakdown', 'repeat7_pct', W, fPct(o.repeat7_pct)), [C().prevLabel + ' ', mk('span', 'breakdown', 'repeat7_pct', S, fPct(p.repeat7_pct))]);
+  const a = bt && bt.find((r) => r.dim === 'all');
+  tile('Open tickets now', mk('div', a ? 'backlog_totals' : null, 'tickets', fw({ dim: 'all', val: 'All open' }), a ? fInt(a.tickets) : '0'),
+    a ? [mk('span', 'backlog_totals', 'over7d', fw({ dim: 'all', val: 'All open' }), fInt(a.over7d)), ' older than 7 days'] : ['None open']);
+}
+function drawDaily() {
+  const box = document.getElementById('chart-daily'); const rows = filtered('daily');
+  if (!rows) { failed('daily', box); return; }
+  box.querySelectorAll('svg').forEach((s) => s.remove());
+  if (!rows.length) { const e = document.createElement('div'); e.className = 'cx-empty'; e.textContent = 'No tickets for this filter.'; box.append(e); return; }
+  box.querySelectorAll('.cx-empty').forEach((e) => e.remove());
+  const data = rows.map((r) => ({ ...r, date: new Date(r.day + 'T00:00:00Z'), tickets: Number(r.tickets), avg7: Number(r.avg7) }));
+  const W = box.clientWidth || 600, H = 260, m = { t: 10, r: 10, b: 24, l: 10 };
+  const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+  const yMax = d3.max(data, (d) => d.tickets);
+  const y = d3.scaleLinear([0, yMax], [H - m.b, m.t]).nice();
+  const yt = svg.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(d3.format('~s')));
+  cleanAxis(yt); const lw = d3.max(yt.selectAll('text').nodes(), (n) => n.getComputedTextLength()) || 20; yt.remove();
+  m.l = lw + 12;
+  const x = d3.scaleBand(data.map((d) => d.day), [m.l, W - m.r]).padding(0.2);
+  const ga = svg.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r)).tickFormat(d3.format('~s')));
+  cleanAxis(ga); ga.select('.domain').remove();
+  const every = Math.max(1, Math.ceil(data.length / Math.max(2, Math.floor((W - m.l) / 70))));
+  const gx = svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).tickValues(data.filter((d, i) => i % every === 0).map((d) => d.day)).tickFormat((d) => d3.utcFormat('%b %-d')(new Date(d + 'T00:00:00Z'))).tickSizeOuter(0));
+  cleanAxis(gx);
+  const dr = DR();
+  if (dr) { const a = data.find((d) => d.day >= dr.from), b = [...data].reverse().find((d) => d.day <= dr.to); if (a && b) svg.append('rect').attr('x', x(a.day) - 1).attr('width', x(b.day) - x(a.day) + x.bandwidth() + 2).attr('y', m.t).attr('height', H - m.t - m.b).attr('fill', `color-mix(in srgb, ${dash.colors[0]} 14%, transparent)`); }
+  svg.append('g').selectAll('rect').data(data).join('rect').attr('x', (d) => x(d.day)).attr('width', x.bandwidth()).attr('y', (d) => y(d.tickets)).attr('height', (d) => y(0) - y(d.tickets)).attr('rx', Math.min(2, x.bandwidth() / 2)).attr('fill', 'var(--cds-chart-muted)');
+  svg.append('path').datum(data).attr('fill', 'none').attr('stroke', dash.colors[0]).attr('stroke-width', 2).attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round')
+    .attr('d', d3.line((d) => x(d.day) + x.bandwidth() / 2, (d) => y(d.avg7)));
+  const t = tip(box); const dot = svg.append('circle').attr('r', 4).attr('fill', dash.colors[0]).attr('stroke', 'var(--color-panel)').attr('stroke-width', 2).style('display', 'none');
+  svg.append('rect').attr('x', m.l).attr('y', m.t).attr('width', W - m.l - m.r).attr('height', H - m.t - m.b).attr('fill', 'transparent')
+    .on('mousemove', (ev) => {
+      const [px] = d3.pointer(ev); const i = Math.max(0, Math.min(data.length - 1, Math.floor((px - m.l) / x.step()))); const d = data[i];
+      dot.style('display', null).attr('cx', x(d.day) + x.bandwidth() / 2).attr('cy', y(d.avg7));
+      tipLines(t, d3.utcFormat('%a, %b %-d')(d.date), [['var(--cds-chart-muted)', 'Tickets', fInt(d.tickets)], [dash.colors[0], '7-day avg', fNum1(d.avg7)], [null, 'Resolved ≤24h', fPct(d.le24_pct)], [null, 'Reopen rate', fPct(d.reopen_pct)]]);
+      const r = box.getBoundingClientRect(); placeTip(t, box, ev.clientX - r.left, ev.clientY - r.top);
+    })
+    .on('mouseleave', () => { t.hidden = true; dot.style('display', 'none'); });
+}
+function drawCurve() {
+  const box = document.getElementById('chart-curve'); const rows = bRows(); const lg = document.getElementById('legend-curve');
+  if (!rows) { failed('breakdown', box); return; }
+  box.querySelectorAll('svg').forEach((s) => s.remove());
+  const months = rows.filter((r) => r.dim === 'all' && r.ptype === 'month').sort((a, b) => a.period.localeCompare(b.period));
+  const pts = [['≤4h', 'le4_pct'], ['≤12h', 'le12_pct'], ['≤24h', 'le24_pct'], ['≤48h', 'le48_pct'], ['≤72h', 'le72_pct']];
+  lg.replaceChildren(...months.map((mo, i) => { const s = document.createElement('span'); const ic = document.createElement('i'); ic.style.background = dash.colors[i]; s.append(ic, mo.period_label); return s; }));
+  const W = box.clientWidth || 500, H = 260, m = { t: 10, r: 52, b: 24, l: 40 };
+  const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+  const x = d3.scalePoint(pts.map((p) => p[0]), [m.l, W - m.r]).padding(0.2);
+  const y = d3.scaleLinear([Math.max(0, Math.floor((d3.min(months, (mo) => Number(mo.le4_pct)) ?? 0.2) * 10 - 0.5) / 10), Math.min(1, Math.ceil((d3.max(months, (mo) => Number(mo.le72_pct)) ?? 0.9) * 10 + 0.5) / 10)], [H - m.b, m.t]);
+  const ga = svg.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r)).tickFormat(d3.format('.0%')));
+  cleanAxis(ga); ga.select('.domain').remove();
+  cleanAxis(svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).tickSizeOuter(0)));
+  months.forEach((mo, i) => {
+    const vals = pts.map(([l, f]) => ({ l, v: Number(mo[f]) }));
+    svg.append('path').datum(vals).attr('fill', 'none').attr('stroke', dash.colors[i]).attr('stroke-width', 2).attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round').attr('d', d3.line((d) => x(d.l), (d) => y(d.v)));
+    svg.append('g').selectAll('circle').data(vals).join('circle').attr('cx', (d) => x(d.l)).attr('cy', (d) => y(d.v)).attr('r', 4).attr('fill', dash.colors[i]).attr('stroke', 'var(--color-panel)').attr('stroke-width', 2);
+  });
+  const t = tip(box);
+  svg.append('g').selectAll('rect').data(pts).join('rect').attr('x', (d) => x(d[0]) - x.step() / 2).attr('width', x.step()).attr('y', m.t).attr('height', H - m.t - m.b).attr('fill', 'transparent')
+    .on('mousemove', (ev, d) => { tipLines(t, 'Resolved ' + d[0], months.map((mo, i) => [dash.colors[i], mo.period_label, fPct(mo[d[1]])])); const r = box.getBoundingClientRect(); placeTip(t, box, ev.clientX - r.left, ev.clientY - r.top); })
+    .on('mouseleave', () => { t.hidden = true; });
+}
+
+/* ---------- volume / resolution / reopen ---------- */
+function drawVolume() {
+  pivot(document.getElementById('tbl-volume'), { dim: state['vol-dim'], ptype: state['vol-pt'], field: 'tickets', fmt: fInt, q: document.getElementById('vol-q').value,
+    extras: [{ label: 'Share · {last}', field: 'share_pct', fmt: fPct }, { label: 'Per day · {last}', field: 'per_day', fmt: fNum1 }, { label: 'Δ per day', field: 'per_day_chg_pct', fmt: fChg, cls: (v) => signCls(v, true) }] });
+}
+function drawResolution() {
+  const rows = bRows(); const sel = document.getElementById('res-period'); const tbl = document.getElementById('tbl-res');
+  if (!rows) { failed('breakdown', tbl); return; }
+  const per = [...periodsOf(rows, 'month'), ...periodsOf(rows, 'week'), ...periodsOf(rows, 'custom').reverse()];
+  if ([...sel.options].map((o) => o.text).join('|') !== per.map((p) => p.label).join('|')) sel.replaceChildren(...per.map((p) => new Option(p.label, p.period)));
+  sel.value = state.resPeriod;
+  const dim = state['res-dim'], q = document.getElementById('res-q').value;
+  const data = rows.filter((r) => r.period === state.resPeriod && ((r.dim === dim && matches(q, r.val)) || r.dim === 'all')).map((r) => r.dim === 'all' ? { ...r, __pin: true } : r);
+  keyed(tbl, { sortId: 'res', defSort: 'tickets', rows: data, key: ['period', 'fc', 'fq', 'dim', 'val'], cols: [
+    { field: 'val', label: DIMLABEL[dim], text: true },
+    { field: 'tickets', label: 'Tickets', fmt: fInt },
+    { field: 'le4_pct', label: '≤4h', fmt: fPct, heatGood: true },
+    { field: 'le12_pct', label: '≤12h', fmt: fPct, heatGood: true },
+    { field: 'le24_pct', label: '≤24h', fmt: fPct, heatGood: true },
+    { field: 'le48_pct', label: '≤48h', fmt: fPct, heatGood: true },
+    { field: 'le72_pct', label: '≤72h', fmt: fPct, heatGood: true },
+    { field: 'gt72_pct', label: '>72h', fmt: fPct, heatBad: true },
+    { field: 'open_pct', label: 'Open', fmt: fPct, heatBad: true },
+    { field: 'avg_res_hrs', label: 'Avg hrs', fmt: fNum1 },
+    { field: 'le24_chg_pp', label: 'Δ ≤24h', fmt: fPP, cls: (v) => signCls(v, false) },
+  ] });
+  pivot(document.getElementById('tbl-res24'), { dim, ptype: state['res24-pt'], field: 'le24_pct', fmt: fPct, q, heatGood: true,
+    extras: [{ label: 'Tickets · {last}', field: 'tickets', fmt: fInt }, { label: 'Δ ≤24h', field: 'le24_chg_pp', fmt: fPP, cls: (v) => signCls(v, false) }] });
+}
+const fHrs = (v) => v == null ? '—' : d3.format(',.1f')(v) + 'h';
+const fHrsChg = (v) => v == null ? '—' : (v > 0.05 ? '+' : v < -0.05 ? '−' : '±') + d3.format(',.1f')(Math.abs(v)) + 'h';
+function drawP95() {
+  pivot(document.getElementById('tbl-p95'), { dim: state['p95-dim'], ptype: state['p95-pt'], field: 'p95_hrs', fmt: fHrs, q: document.getElementById('p95-q').value,
+    heatFn: (v) => Math.min(1, v / 240),
+    extras: [{ label: 'P50 · {last}', field: 'p50_hrs', fmt: fHrs }, { label: 'P90 · {last}', field: 'p90_hrs', fmt: fHrs },
+      { label: 'Resolved · {last}', field: 'resolved', fmt: fInt }, { label: 'Δ P95', field: 'p95_chg_hrs', fmt: fHrsChg, cls: (v) => (v == null || Math.abs(v) < 0.05 ? '' : v > 0 ? 'cx-bad' : 'cx-good') }] });
+}
+function drawReopen() {
+  pivot(document.getElementById('tbl-reopen'), { dim: state['ro-dim'], ptype: state['ro-pt'], field: 'reopen_pct', fmt: fPct, q: document.getElementById('ro-q').value, heatBad: true,
+    extras: [{ label: 'Reopened · {last}', field: 'reopened', fmt: fInt }, { label: 'Tickets · {last}', field: 'tickets', fmt: fInt }, { label: 'Δ reopen', field: 'reopen_chg_pp', fmt: fPP, cls: (v) => signCls(v, true) }] });
+}
+
+/* ---------- ops ---------- */
+function drawBacklog() {
+  const tbl = document.getElementById('tbl-backlog'); const rows = filtered('backlog'); const tot = filtered('backlog_totals');
+  tbl.replaceChildren(); if (!rows) { failed('backlog', tbl); return; }
+  if (!rows.length) { tbl.innerHTML = ''; const c = tbl.createTBody().insertRow().insertCell(); c.className = 'cx-empty'; c.textContent = 'No open tickets for this filter.'; return; }
+  const dim = state['bl-dim'];
+  const ages = [...new Map(rows.map((r) => [r.age_bucket, Number(r.age_order)])).entries()].sort((a, b) => a[1] - b[1]).map((a) => a[0]);
+  const I = new Map(rows.map((r) => [r.dim + '|' + r.val + '|' + r.age_bucket, r]));
+  const totOf = (d, v) => tot && tot.find((r) => r.dim === d && r.val === v);
+  const vals = [...new Set(rows.filter((r) => r.dim === dim).map((r) => r.val))].sort((a, b) => ((totOf(dim, b) || {}).tickets || 0) - ((totOf(dim, a) || {}).tickets || 0));
+  const h = tbl.createTHead().insertRow();
+  [DIMLABEL[dim], ...ages, 'Total open'].forEach((l, i) => { const th = document.createElement('th'); th.textContent = l; if (i === ages.length + 1) th.className = 'cx-grp'; h.append(th); });
+  const tb = tbl.createTBody();
+  const line = (d, v, total) => {
+    const tr = tb.insertRow(); if (total) tr.className = 'cx-total'; tr.insertCell().textContent = v;
+    const t = totOf(d, v);
+    ages.forEach((a) => { const r = I.get(d + '|' + v + '|' + a); const td = tr.insertCell(); if (!r) { td.textContent = '—'; return; }
+      td.textContent = fInt(r.tickets);
+      if (t && !total && (a === '7–30d' || a === '30d+')) heat(td, Number(r.tickets) / t.tickets, false); });
+    const td = tr.insertCell(); td.className = 'cx-grp';
+    if (t) { td.textContent = fInt(t.tickets); } else td.textContent = '—';
+  };
+  line('all', 'All open', true); vals.forEach((v) => line(dim, v, false));
+}
+function drawZone() {
+  const rows = rowsOf('zone'); const sel = document.getElementById('zone-period'); const tbl = document.getElementById('tbl-zone');
+  if (!rows) { failed('zone', tbl); return; }
+  const ps = [...new Set(rows.map((r) => r.period))].sort();
+  const lbl = (p) => d3.utcFormat('%b %Y')(new Date(p + '-01T00:00:00Z')) + (p === C().cur ? ' (MTD)' : '');
+  if (sel.options.length !== ps.length) sel.replaceChildren(...ps.map((p) => new Option(lbl(p), p)));
+  sel.value = state.zonePeriod;
+  keyed(tbl, { sortId: 'zone', defSort: 'tickets', key: ['period', 'zone'], rows: rows.filter((r) => r.period === state.zonePeriod), cols: [
+    { field: 'zone', label: 'Zone', text: true },
+    { field: 'tickets', label: 'Tickets', fmt: fInt },
+    { field: 'per_day', label: 'Per day', fmt: fNum1 },
+    { field: 'per_day_chg_pct', label: 'Δ per day', fmt: fChg, cls: (v) => signCls(v, true) },
+    { field: 'le4_pct', label: '≤4h', fmt: fPct, heatGood: true },
+    { field: 'le24_pct', label: '≤24h', fmt: fPct, heatGood: true },
+    { field: 'le72_pct', label: '≤72h', fmt: fPct, heatGood: true },
+    { field: 'gt72_pct', label: '>72h', fmt: fPct, heatBad: true },
+    { field: 'reopen_pct', label: 'Reopen', fmt: fPct, heatBad: true },
+    { field: 'repeat7_pct', label: 'Repeat 7d', fmt: fPct, heatBad: true },
+    { field: 'avg_res_hrs', label: 'Avg hrs', fmt: fNum1 },
+  ] });
+}
+function drawPartner() {
+  const rows = rowsOf('partner'); const tbl = document.getElementById('tbl-partner');
+  if (!rows) { failed('partner', tbl); return; }
+  keyed(tbl, { sortId: 'partner', defSort: 'tickets', key: ['partner_id'], rows, cols: [
+    { field: 'partner', label: 'Partner', text: true },
+    { field: 'zone', label: 'Zone', text: true },
+    { field: 'tickets', label: 'Tickets', fmt: fInt },
+    { field: 'per_day_chg_pct', label: 'Δ per day', fmt: fChg, cls: (v) => signCls(v, true) },
+    { field: 'le24_pct', label: '≤24h', fmt: fPct, heatGood: true },
+    { field: 'gt72_pct', label: '>72h', fmt: fPct, heatBad: true },
+    { field: 'open_pct', label: 'Open', fmt: fPct, heatBad: true },
+    { field: 'reopen_pct', label: 'Reopen', fmt: fPct, heatBad: true },
+    { field: 'repeat7_pct', label: 'Repeat 7d', fmt: fPct, heatBad: true },
+    { field: 'avg_res_hrs', label: 'Avg hrs', fmt: fNum1 },
+  ] });
+}
+function drawSla() {
+  const box = document.getElementById('chart-sla'); const rows = rowsOf('sla'); const lg = document.getElementById('legend-sla');
+  if (!rows) { failed('sla', box); return; }
+  box.querySelectorAll('svg').forEach((s) => s.remove());
+  const order = ['within TAT', 'within 2*TAT', 'beyond 2*TAT', 'Not resolved'];
+  const cats = [...order.filter((o) => rows.some((r) => r.bucket === o)), ...[...new Set(rows.map((r) => r.bucket))].filter((b) => !order.includes(b))];
+  const color = (c) => dash.colors[cats.indexOf(c)];
+  lg.replaceChildren(...cats.map((c) => { const s = document.createElement('span'); const i = document.createElement('i'); i.style.background = color(c); s.append(i, c); return s; }));
+  const ps = [...new Set(rows.map((r) => r.period))].sort();
+  const lbl = (p) => d3.utcFormat('%b')(new Date(p + '-01T00:00:00Z')) + (p === C().cur ? ' MTD' : '');
+  const W = box.clientWidth || 400, bh = 26, m = { t: 4, r: 8, b: 22, l: 64 }, H = m.t + m.b + ps.length * (bh + 12);
+  const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+  const x = d3.scaleLinear([0, 1], [m.l, W - m.r]); const y = d3.scaleBand(ps, [m.t, H - m.b]).padding(0.3);
+  cleanAxis(svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).ticks(4).tickFormat(d3.format('.0%')).tickSizeOuter(0)));
+  svg.append('g').selectAll('text').data(ps).join('text').attr('x', m.l - 8).attr('y', (p) => y(p) + y.bandwidth() / 2).attr('dy', '0.35em').attr('text-anchor', 'end').text(lbl);
+  const t = tip(box);
+  ps.forEach((p) => {
+    let acc = 0;
+    cats.forEach((c) => {
+      const r = rows.find((z) => z.period === p && z.bucket === c); if (!r) return; const v = Number(r.share_pct);
+      svg.append('rect').attr('x', x(acc) + 1).attr('width', Math.max(0, x(acc + v) - x(acc) - 2)).attr('y', y(p)).attr('height', y.bandwidth()).attr('rx', 3).attr('fill', color(c))
+        .on('mousemove', (ev) => { tipLines(t, lbl(p) + ' · ' + c, [[color(c), 'Share', fPct(v)], [null, 'Tickets', fInt(r.tickets)]]); const b = box.getBoundingClientRect(); placeTip(t, box, ev.clientX - b.left, ev.clientY - b.top); })
+        .on('mouseleave', () => { t.hidden = true; });
+      acc += v;
+    });
+  });
+}
+function drawHeat() {
+  const box = document.getElementById('chart-heat'); const rows = rowsOf('hourly');
+  if (!rows) { failed('hourly', box); return; }
+  box.querySelectorAll('svg').forEach((s) => s.remove());
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const W = box.clientWidth || 400, m = { t: 4, r: 4, b: 20, l: 34 };
+  const cw = (W - m.l - m.r) / 24, ch = Math.min(26, Math.max(16, cw)), H = m.t + m.b + ch * 7;
+  const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+  const max = d3.max(rows, (r) => Number(r.tickets));
+  const t = tip(box);
+  svg.append('g').selectAll('rect').data(rows).join('rect')
+    .attr('x', (r) => m.l + Number(r.hour) * cw + 1).attr('y', (r) => m.t + (Number(r.dow) - 1) * ch + 1).attr('width', cw - 2).attr('height', ch - 2).attr('rx', 2)
+    .attr('fill', (r) => `color-mix(in srgb, ${dash.colors[0]} ${Math.round(8 + 92 * Number(r.tickets) / max)}%, var(--color-panel))`)
+    .on('mousemove', (ev, r) => { tipLines(t, `${r.weekday} · ${String(r.hour).padStart(2, '0')}:00–${String(r.hour).padStart(2, '0')}:59`, [[null, 'Tickets', fInt(r.tickets)]]); const b = box.getBoundingClientRect(); placeTip(t, box, ev.clientX - b.left, ev.clientY - b.top); })
+    .on('mouseleave', () => { t.hidden = true; });
+  svg.append('g').selectAll('text').data(days).join('text').attr('x', m.l - 6).attr('y', (d, i) => m.t + i * ch + ch / 2).attr('dy', '0.35em').attr('text-anchor', 'end').text((d) => d);
+  const step = cw < 18 ? 6 : 3;
+  svg.append('g').selectAll('text').data(d3.range(0, 24, step)).join('text').attr('x', (h) => m.l + h * cw + cw / 2).attr('y', H - 6).attr('text-anchor', 'middle').text((h) => String(h).padStart(2, '0'));
+}
+function drawChannel() {
+  const tbl = document.getElementById('tbl-channel'); const rows = rowsOf('channel'); tbl.replaceChildren();
+  if (!rows) { failed('channel', tbl); return; }
+  const ps = [...new Set(rows.map((r) => r.period))].sort(); const last = ps[ps.length - 1];
+  const lbl = (p) => d3.utcFormat('%b')(new Date(p + '-01T00:00:00Z')) + (p === C().cur ? ' MTD' : '');
+  const I = new Map(rows.map((r) => [r.period + '|' + r.channel, r]));
+  const chans = [...new Set(rows.map((r) => r.channel))].sort((a, b) => ((I.get(last + '|' + b) || {}).tickets || 0) - ((I.get(last + '|' + a) || {}).tickets || 0));
+  const h = tbl.createTHead().insertRow();
+  ['Channel', ...ps.map((p) => 'Share · ' + lbl(p)), 'Tickets · ' + lbl(last), '≤24h · ' + lbl(last), 'Reopen · ' + lbl(last)].forEach((l, i) => { const th = document.createElement('th'); th.textContent = l; if (i === ps.length + 1) th.className = 'cx-grp'; h.append(th); });
+  const tb = tbl.createTBody();
+  chans.forEach((c) => {
+    const tr = tb.insertRow(); tr.insertCell().textContent = c;
+    ps.forEach((p) => { const r = I.get(p + '|' + c); const td = tr.insertCell(); if (!r) { td.textContent = '—'; return; } td.dataset.source = 'channel'; td.dataset.field = 'share_pct'; td.dataset.where = whereStr({ period: p, channel: c }); td.textContent = fPct(r.share_pct); heat(td, r.share_pct, true); });
+    [['tickets', fInt], ['le24_pct', fPct], ['reopen_pct', fPct]].forEach(([f, fm], i) => { const r = I.get(last + '|' + c); const td = tr.insertCell(); if (i === 0) td.className = 'cx-grp'; if (!r || r[f] == null) { td.textContent = '—'; return; } td.dataset.source = 'channel'; td.dataset.field = f; td.dataset.where = whereStr({ period: last, channel: c }); td.textContent = fm(r[f]); });
+  });
+}
+
+function render() {
+  drawRange();
+  drawFilters();
+  try { drawTakeaway(); } catch (e) { console.error(e); }
+  if (state.tab === 'overview') { drawTiles(); drawDaily(); drawCurve(); }
+  if (state.tab === 'volume') drawVolume();
+  if (state.tab === 'resolution') drawResolution();
+  if (state.tab === 'reopen') drawReopen();
+  if (state.tab === 'p95') drawP95();
+  if (state.tab === 'ops') { drawBacklog(); drawZone(); drawPartner(); drawSla(); drawHeat(); drawChannel(); }
+}
+
+const named = location.hash.slice(1);
+if (['overview', 'volume', 'resolution', 'reopen', 'p95', 'ops'].includes(named)) showTab(named, false);
+dash.onData(render);
+})();
+</script>

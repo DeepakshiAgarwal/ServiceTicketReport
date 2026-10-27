@@ -1,0 +1,49 @@
+name: Daily refresh and Slack alerts
+
+on:
+  schedule:
+    - cron: "30 4 * * *"   # 10:00 IST every day (GitHub may start it a few minutes late)
+  workflow_dispatch:         # "Run workflow" button for a manual run
+
+permissions:
+  contents: write   # commit the refreshed index.html
+  pages: write      # ask GitHub Pages to republish
+
+concurrency:
+  group: daily
+  cancel-in-progress: false
+
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Refresh dashboard data
+        env:
+          METABASE_API_KEY: ${{ secrets.METABASE_API_KEY }}
+        run: python scripts/refresh_build.py
+
+      - name: Publish refreshed dashboard
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then echo "No data change"; exit 0; fi
+          git commit -m "Daily data refresh $(date -u +%F)"
+          git push
+          curl -fsS -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pages/builds" || echo "Pages rebuild request failed; it will publish on the next push"
+
+      - name: Send Slack alerts
+        if: always()
+        env:
+          METABASE_API_KEY: ${{ secrets.METABASE_API_KEY }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: python scripts/alerts.py

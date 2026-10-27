@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CX Service Ticket Dashboard</title>
+<meta name="description" content="Wiom CX service tickets: volume, resolution TAT and reopen rate by category, sub-category and queue.">
+<style>
+/* Standalone shell: theme tokens the dashboard page expects, light + dark */
+:root {
+  --font-anthropic-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-anthropic-serif: Georgia, "Times New Roman", serif;
+  --cds-font-size-caption: 0.78rem; --cds-font-size-body: 0.9rem; --cds-font-size-heading: 1rem; --cds-font-size-title: 1.75rem;
+  --cds-font-weight-medium: 500;
+  --cds-gap-xs: 4px; --cds-gap-sm: 8px; --cds-gap-md: 14px; --cds-gap-lg: 22px; --cds-gap-xl: 32px;
+  --cds-pad-xs: 4px; --cds-pad-sm: 8px; --cds-pad-md: 14px; --cds-pad-lg: 18px; --cds-pad-xl: 28px;
+  --cds-radius: 8px; --cds-dur-slow: 300ms; --cds-ease-out: cubic-bezier(.2,.8,.2,1);
+  --color-bg: #f6f7f9; --color-panel: #ffffff; --color-fg: #1c2230; --color-fg-muted: #5d6677; --color-border-line: #e1e4ea;
+  --color-ok: #1b7f4b; --color-warn: #a66300; --color-bad: #c0342b;
+  --cds-chart-muted: #c9ced8; --cds-chart-grid: #eceef2; --cds-chart-axis: #b8bec9; --cds-chart-reference: #8a92a1; --cds-chart-status-critical: #d6453b;
+  --cds-surface-popover: #ffffff; --cds-border: #d9dde4; --cds-shadow-popover: 0 6px 24px rgba(20, 28, 45, .14); --cds-text-secondary: #5d6677;
+  --s1: #2f6fdc; --s2: #e07b2a; --s3: #189482; --s4: #8a55d6; --s5: #c4447a; --s6: #6b8e23; --s7: #3a9fd6; --s8: #9c6b3f;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #11141a; --color-panel: #1a1e26; --color-fg: #e7eaf0; --color-fg-muted: #9aa3b2; --color-border-line: #2c323d;
+    --color-ok: #4cc38a; --color-warn: #e0a54a; --color-bad: #f07167;
+    --cds-chart-muted: #3f4654; --cds-chart-grid: #262b35; --cds-chart-axis: #4a5260; --cds-chart-reference: #7d8698; --cds-chart-status-critical: #f07167;
+    --cds-surface-popover: #222733; --cds-border: #353c48; --cds-shadow-popover: 0 6px 24px rgba(0, 0, 0, .5); --cds-text-secondary: #9aa3b2;
+    --s1: #6b9cf0; --s2: #f09a55; --s3: #3cc0ab; --s4: #ad86ec; --s5: #e47aa5; --s6: #9bbb4f; --s7: #6cc1ee; --s8: #c79a6c;
+    color-scheme: dark;
+  }
+}
+html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); font-family: var(--font-anthropic-sans); font-size: 14px; }
+#dash-root { box-sizing: border-box; max-width: 1400px; margin-inline: auto; padding: 24px clamp(16px, 3vw, 40px) 48px; }
+#dash-root *, #dash-root *::before, #dash-root *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+.dash-skeleton { color: transparent !important; background: var(--color-border-line); border-radius: 6px; }
+.site-foot { max-width: 1400px; margin: 0 auto; padding: 0 clamp(16px, 3vw, 40px) 32px; color: var(--color-fg-muted); font-size: 12px; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+/* Data snapshot pulled from PROD_DB.PUBLIC.SERVICE_TICKET_MODEL via Metabase */
+window.__CX_DATA = __DATA__;
+/* Minimal stand-in for the dashboard runtime: serves the embedded data, filters and redraws */
+window.dash = (() => {
+  const DATA = window.__CX_DATA;
+  const defaults = { cats: [], queues: [] };
+  let params = { ...defaults };
+  const subs = [];
+  const run = () => subs.forEach((fn) => { try { fn(); } catch (e) { console.error(e); } });
+  let t; window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(run, 120); });
+  return {
+    data(id) { const d = DATA[id]; return d ? { status: 'ok', data: d, columns: Object.keys(d[0] || {}), meta: [], refreshing: false } : { status: 'missing', data: [] }; },
+    onData(fn) { subs.push(fn); try { fn(); } catch (e) { console.error(e); } },
+    params() { return { ...params }; },
+    setParams(p) { params = { ...params, ...p }; run(); },
+    resetParams() { params = { ...defaults }; run(); },
+    setLink(name) { try { history.replaceState(null, '', '#' + name); } catch (e) {} },
+    colors: ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)', 'var(--s6)', 'var(--s7)', 'var(--s8)'],
+    calc() {}, loader() {}, refresh() {},
+  };
+})();
+</script>
+</head>
+<body>
+<div id="dash-root">
+__PAGE__
+</div>
+<p class="site-foot">Snapshot as of __ASOF__ IST. Source: PROD_DB.PUBLIC.SERVICE_TICKET_MODEL (Snowflake via Metabase). Numbers do not update on their own; the page is republished when the data is refreshed.</p>
+</body>
+</html>
