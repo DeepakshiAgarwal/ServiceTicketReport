@@ -176,7 +176,7 @@
         <dt>Reopen rate</dt><dd>Tickets reopened at least once (TIMES_REOPENED &gt; 0) ÷ resolved tickets.</dd>
         <dt>Repeat in 7 days</dt><dd>Ticket from a customer who had raised another ticket in the previous 7 days.</dd>
         <dt>Created between</dt><dd>Pick a From and To date (created date, IST). Every table then gets a Selected dates view, compared with the same number of days just before; the overview cards switch to the selected dates too.</dd>
-        <dt>Per day / Δ</dt><dd>Partial periods (the current month so far and the current week) are compared per day. Δ is against the previous period; pp = percentage points.</dd>
+        <dt>Per day / Δ</dt><dd>Partial periods (the current month so far and the current week) are compared per day. In "This month by day" each column is one created date and Δ compares it with the day before; today's column is a partial day. Δ is against the previous period; pp = percentage points.</dd>
       </dl>
     </div>
   </section>
@@ -188,7 +188,7 @@
       <p class="cx-note">Tickets created per period. Δ compares tickets per day in the latest period with the one before it.</p>
       <div class="cx-ctrl">
         <div class="cx-seg" data-group="vol-dim"><button data-v="category" aria-pressed="true">Category</button><button data-v="subcategory" aria-pressed="false">Sub-category</button><button data-v="queue" aria-pressed="false">Queue</button><button data-v="workstream" aria-pressed="false">Workstream</button><button data-v="channel" aria-pressed="false">Chat / call</button></div>
-        <div class="cx-seg" data-group="vol-pt"><button data-v="month" aria-pressed="true">Last 3 months + MTD</button><button data-v="week" aria-pressed="false">This month by week</button><button data-v="custom" aria-pressed="false" hidden>Selected dates</button></div>
+        <div class="cx-seg" data-group="vol-pt"><button data-v="month" aria-pressed="true">Last 3 months + MTD</button><button data-v="week" aria-pressed="false">This month by week</button><button data-v="day" aria-pressed="false">This month by day</button><button data-v="custom" aria-pressed="false" hidden>Selected dates</button></div>
         <input type="search" id="vol-q" placeholder="Search" aria-label="Search rows">
       </div>
       <div class="cx-tw"><table id="tbl-volume" data-source="breakdown"></table></div>
@@ -211,7 +211,7 @@
       <h3>Resolved ≤24h across periods</h3>
       <p class="cx-note">Same breakdown as above, ≤24h only, so the trend for each row reads across.</p>
       <div class="cx-ctrl">
-        <div class="cx-seg" data-group="res24-pt"><button data-v="month" aria-pressed="true">Last 3 months + MTD</button><button data-v="week" aria-pressed="false">This month by week</button><button data-v="custom" aria-pressed="false" hidden>Selected dates</button></div>
+        <div class="cx-seg" data-group="res24-pt"><button data-v="month" aria-pressed="true">Last 3 months + MTD</button><button data-v="week" aria-pressed="false">This month by week</button><button data-v="day" aria-pressed="false">This month by day</button><button data-v="custom" aria-pressed="false" hidden>Selected dates</button></div>
       </div>
       <div class="cx-tw"><table id="tbl-res24" data-source="breakdown"></table></div>
     </div>
@@ -224,7 +224,7 @@
       <p class="cx-note">Tickets reopened at least once ÷ resolved tickets. Δ is in percentage points against the previous period.</p>
       <div class="cx-ctrl">
         <div class="cx-seg" data-group="ro-dim"><button data-v="category" aria-pressed="true">Category</button><button data-v="subcategory" aria-pressed="false">Sub-category</button><button data-v="queue" aria-pressed="false">Queue</button><button data-v="workstream" aria-pressed="false">Workstream</button><button data-v="channel" aria-pressed="false">Chat / call</button></div>
-        <div class="cx-seg" data-group="ro-pt"><button data-v="month" aria-pressed="true">Last 3 months + MTD</button><button data-v="week" aria-pressed="false">This month by week</button><button data-v="custom" aria-pressed="false" hidden>Selected dates</button></div>
+        <div class="cx-seg" data-group="ro-pt"><button data-v="month" aria-pressed="true">Last 3 months + MTD</button><button data-v="week" aria-pressed="false">This month by week</button><button data-v="day" aria-pressed="false">This month by day</button><button data-v="custom" aria-pressed="false" hidden>Selected dates</button></div>
         <input type="search" id="ro-q" placeholder="Search" aria-label="Search rows">
       </div>
       <div class="cx-tw"><table id="tbl-reopen" data-source="breakdown"></table></div>
@@ -238,7 +238,7 @@
       <p class="cx-note">Hours from ticket creation to final resolution within which 95% of resolved tickets were closed. Lower is better. Δ is in hours against the previous period.</p>
       <div class="cx-ctrl">
         <div class="cx-seg" data-group="p95-dim"><button data-v="category" aria-pressed="true">Category</button><button data-v="subcategory" aria-pressed="false">Sub-category</button><button data-v="queue" aria-pressed="false">Queue</button><button data-v="workstream" aria-pressed="false">Workstream</button><button data-v="channel" aria-pressed="false">Chat / call</button></div>
-        <div class="cx-seg" data-group="p95-pt"><button data-v="month" aria-pressed="true">Last 3 months + MTD</button><button data-v="week" aria-pressed="false">This month by week</button><button data-v="custom" aria-pressed="false" hidden>Selected dates</button></div>
+        <div class="cx-seg" data-group="p95-pt"><button data-v="month" aria-pressed="true">Last 3 months + MTD</button><button data-v="week" aria-pressed="false">This month by week</button><button data-v="day" aria-pressed="false">This month by day</button><button data-v="custom" aria-pressed="false" hidden>Selected dates</button></div>
         <input type="search" id="p95-q" placeholder="Search" aria-label="Search rows">
       </div>
       <div class="cx-tw"><table id="tbl-p95" data-source="breakdown"></table></div>
@@ -356,6 +356,7 @@ function pctile(hist, p) {
   }
   return bLo(NB) / 60;
 }
+function curMonth(raw) { let m = null; for (const r of raw) if (r.ptype === 'month' && (!m || r.period > m)) m = r.period; return m; }
 const SUMS = ['tickets', 'resolved', 'n4', 'n12', 'n24', 'n48', 'n72', 'n72p', 'reopened', 'res_timed', 'res_mins', 'repeat7'];
 function bRows() {
   return cached('breakdown', (raw0, s) => {
@@ -367,6 +368,13 @@ function bRows() {
         if (period) extra.push({ ...r, __src: r, ptype: 'custom', period, period_label: period === '2-sel' ? dr.label : dr.plabel, days: period === '2-sel' ? dr.days : dr.pdays });
       }
       raw = raw0.concat(extra);
+    }
+    /* This month by day: one period per created day of the current month */
+    const curM = curMonth(raw0);
+    if (daily && curM) {
+      const byDay = [];
+      for (const r of daily) if (r.day.slice(0, 7) === curM) byDay.push({ ...r, __src: r, ptype: 'day', period: r.day, period_label: fmtDay(r.day), days: 1 });
+      raw = raw.concat(byDay);
     }
     const m = new Map();
     const add = (r, dim, val) => {
@@ -390,7 +398,7 @@ function bRows() {
       o.p50_hrs = pctile(o.hist, 0.5); o.p90_hrs = pctile(o.hist, 0.9); o.p95_hrs = pctile(o.hist, 0.95);
     });
     const I = new Map(rows.map((o) => [o.period + '|' + o.dim + '|' + o.val, o]));
-    ['month', 'week', 'custom'].forEach((pt) => {
+    ['month', 'week', 'custom', 'day'].forEach((pt) => {
       const ps = [...new Set(raw.filter((r) => r.ptype === pt).map((r) => r.period))].sort();
       rows.filter((o) => o.ptype === pt).forEach((o) => {
         const i = ps.indexOf(o.period); const prev = i > 0 ? I.get(ps[i - 1] + '|' + o.dim + '|' + o.val) : null;
@@ -543,6 +551,12 @@ document.getElementById('zone-period').addEventListener('change', (e) => { state
 
 /* ---------- helpers for breakdown ---------- */
 function periodsOf(rows, ptype) {
+  if (ptype === 'day') {
+    const curM = curMonth(rowsOf('breakdown') || []), d = rowsOf('daily') || [];
+    const b = rowsOf('breakdown') || [], today = b.length && b[0].asof ? String(b[0].asof).slice(0, 10) : null;
+    return [...new Set(d.filter((r) => r.day.slice(0, 7) === curM).map((r) => r.day))].sort()
+      .map((day) => ({ period: day, label: fmtDay(day) + (day === today ? ' (so far)' : ''), days: 1, partial: day === today }));
+  }
   if (ptype === 'custom') { const dr = DR(); return dr ? [{ period: '1-prev', label: dr.plabel, days: dr.pdays }, { period: '2-sel', label: dr.label, days: dr.days }] : []; }
   const m = new Map(); (rowsOf('breakdown') || []).filter((r) => r.ptype === ptype).forEach((r) => m.set(r.period, { period: r.period, label: r.period_label, days: Number(r.days) }));
   return [...m.values()].sort((a, b) => a.period.localeCompare(b.period));
@@ -569,7 +583,9 @@ function idx(rows) { const m = new Map(); rows.forEach((r) => m.set(r.period + '
 function pivot(table, { dim, ptype, field, fmt, extras, q, heatGood, heatBad, heatFn }) {
   const rows = bRows(); table.replaceChildren();
   if (!rows) return;
-  const per = periodsOf(rows, ptype), I = idx(rows), last = per[per.length - 1];
+  const per = periodsOf(rows, ptype), I = idx(rows);
+  // extras and Δ use the last complete period: in the day view today is still filling up
+  const last = per.length > 1 && per[per.length - 1].partial ? per[per.length - 2] : per[per.length - 1];
   const vals = [...new Set(rows.filter((r) => r.dim === dim && r.ptype === ptype).map((r) => r.val))]
     .map((v) => ({ v, n: Number((I.get(last.period + '|' + dim + '|' + v) || {}).tickets || 0) }))
     .sort((a, b) => b.n - a.n).filter((o) => matches(q, o.v));
@@ -744,7 +760,7 @@ function drawVolume() {
 function drawResolution() {
   const rows = bRows(); const sel = document.getElementById('res-period'); const tbl = document.getElementById('tbl-res');
   if (!rows) { failed('breakdown', tbl); return; }
-  const per = [...periodsOf(rows, 'month'), ...periodsOf(rows, 'week'), ...periodsOf(rows, 'custom').reverse()];
+  const per = [...periodsOf(rows, 'month'), ...periodsOf(rows, 'week'), ...periodsOf(rows, 'custom').reverse(), ...periodsOf(rows, 'day').reverse()];
   if ([...sel.options].map((o) => o.text).join('|') !== per.map((p) => p.label).join('|')) sel.replaceChildren(...per.map((p) => new Option(p.label, p.period)));
   sel.value = state.resPeriod;
   const dim = state['res-dim'], q = document.getElementById('res-q').value;
