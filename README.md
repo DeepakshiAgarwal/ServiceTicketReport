@@ -20,9 +20,9 @@ on equally old tickets, and report a change only when the row has at least 30 ti
 | Number | Compared | Limit |
 |---|---|---|
 | Tickets created | yesterday vs same weekday last week | ±20% |
-| Resolved ≤24h | tickets created 2 days ago vs 9 days ago | ±5 pp |
-| Reopened ≤48h after resolution | last 7 full days vs the 7 before | ±3 pp |
-| P95 resolution time (capped at 72h) | 7-day groups at least 3 days old | ±12 h |
+| Solved within 24h | tickets raised 2 days ago vs 9 days ago | ±5 points |
+| Reopened within 48h of being solved | tickets raised in the week 10–4 days ago vs the week before | ±3 points |
+| P95 time to solve (capped at 72h) | same two weeks as reopen | ±12 hours |
 
 Limits are constants at the top of `scripts/alerts.py`.
 
