@@ -133,8 +133,10 @@ def message(rows: list, alerts: dict) -> str:
 
 
 def post(text: str) -> None:
-    url = os.environ.get("SLACK_WEBHOOK_URL")
+    url = (os.environ.get("SLACK_WEBHOOK_URL") or "").strip()
     if not url:
+        if os.environ.get("GITHUB_ACTIONS"):
+            raise SystemExit("SLACK_WEBHOOK_URL secret is empty or missing: add it under Settings → Secrets and variables → Actions")
         print("SLACK_WEBHOOK_URL not set; message not sent:\n")
         print(text)
         return
