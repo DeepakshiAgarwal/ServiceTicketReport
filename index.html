@@ -558,10 +558,17 @@ function drawDates() {
 function drawFilters() {  const raw = rowsOf('breakdown'); const s = S();
   MS.forEach((cfg) => {
     const root = document.getElementById(cfg.id); const list = root.querySelector('.cx-ms-list'); const chosen = s[cfg.param];
-    if (raw && !list.childElementCount) {
-      const m = new Map(); raw.filter((r) => r.ptype === 'month' && !(cfg.field === 'ws' && r.ws === 'Other')).forEach((r) => m.set(r[cfg.field], (m.get(r[cfg.field]) || 0) + Number(r.tickets)));
+    // Options follow the other filters (e.g. Workstream PFT → only PFT's queues and categories); picked values always stay listed.
+    const others = { ...s, [cfg.param]: [] };
+    const sig = JSON.stringify([others.wss, others.chs, others.cats, others.queues]);
+    if (raw && list.dataset.sig !== sig) {
+      list.dataset.sig = sig;
+      const q = root.querySelector('input[type="search"]').value;
+      const m = new Map(); raw.filter((r) => r.ptype === 'month' && !(cfg.field === 'ws' && r.ws === 'Other') && keep(r, others)).forEach((r) => m.set(r[cfg.field], (m.get(r[cfg.field]) || 0) + Number(r.tickets)));
+      chosen.forEach((v) => { if (!m.has(v)) m.set(v, 0); });
+      list.replaceChildren();
       [...m.entries()].sort((a, b) => b[1] - a[1]).forEach(([v, n]) => {
-        const l = document.createElement('label'); l.dataset.v = v;
+        const l = document.createElement('label'); l.dataset.v = v; l.hidden = !matches(q, v);
         const i = document.createElement('input'); i.type = 'checkbox'; i.value = v;
         const t = document.createElement('span'); t.textContent = v;
         const c = document.createElement('small'); c.textContent = d3.format(',')(n);
