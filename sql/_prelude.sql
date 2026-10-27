@@ -30,12 +30,11 @@ tk as (
     dc.cat, dc.cat || ' › ' || ds.sub cs, dq.q,
     -- Workstream: CX L2 = queue Cx (wins over PFT); PFT = Internet Issues, Partner Misbehavior,
     -- Shifting Request (Shift Within My Home / Shift to New Address only), Others except Other / App not working / Invoice requested.
-    -- PFT tickets finally resolved within 5 minutes of creation count as resolved on call and are kept out of PFT.
     case when base.q_k = 'CX' then 'CX L2'
          when base.cat_k in ('INTERNET ISSUES', 'PARTNER MISBEHAVIOR')
            or (base.cat_k = 'SHIFTING REQUEST' and base.sub_k in ('SHIFT WITHIN MY HOME', 'SHIFT TO NEW ADDRESS'))
            or (base.cat_k = 'OTHERS' and base.sub_k not in ('OTHER', 'APP NOT WORKING', 'INVOICE REQUESTED'))
-           then iff(base.is_resolved = 1 and base.resolution_period_mins_calendarhrs <= 5, 'PFT – resolved on call', 'PFT')
+           then 'PFT'
          else 'Other' end ws,
     -- Chat = TICKET_SOURCE CUSTOMER_CHAT; Call = everything else (IVR / Kapture sources until Jul 17, source left blank since Jul 18).
     iff(upper(trim(base.ticket_source)) = 'CUSTOMER_CHAT', 'Chat', 'Call') ch,

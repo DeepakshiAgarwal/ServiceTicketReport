@@ -167,7 +167,7 @@
       <h3>How the metrics are defined</h3>
       <dl>
         <dt>Category / sub-category</dt><dd>Split of the ticket's latest title ("Category|Sub-category"). Case differences are merged.</dd>
-        <dt>Workstream</dt><dd>CX L2 = queue Cx. PFT = Internet Issues, Partner Misbehavior, Shifting Request (Shift Within My Home, Shift to New Address) and Others (except Other, App not working, Invoice requested), not in queue Cx. PFT tickets finally resolved within 5 minutes of creation are treated as resolved on call and shown separately as "PFT – resolved on call". Everything else = Other.</dd>
+        <dt>Workstream</dt><dd>CX L2 = queue Cx. PFT = Internet Issues, Partner Misbehavior, Shifting Request (Shift Within My Home, Shift to New Address) and Others (except Other, App not working, Invoice requested), not in queue Cx. Everything else = Other.</dd>
         <dt>Chat / call</dt><dd>Chat = TICKET_SOURCE CUSTOMER_CHAT. Call = every other ticket: IVR and Kapture sources until Jul 17; since Jul 18 call tickets arrive with the source left blank.</dd>
         <dt>Queue</dt><dd>CURRENT_QUEUE on the ticket (Px, Cx, Booking Status, Wiom Net, Tech, …).</dd>
         <dt>Resolved ≤ Xh</dt><dd>Share of all tickets created in the period whose final resolution came within X calendar hours of creation (RESOLUTION_PERIOD_MINS_CALENDARHRS). Open tickets count as not resolved, so the latest days read slightly low until they age.</dd>
