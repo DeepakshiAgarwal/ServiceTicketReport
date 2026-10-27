@@ -380,7 +380,7 @@ function rangeLabel(a, b) {
 }
 function dayBounds() { const d = rowsOf('daily'); if (!d || !d.length) return null; let lo = d[0].day, hi = d[0].day; for (const r of d) { if (r.day < lo) lo = r.day; if (r.day > hi) hi = r.day; } return { lo, hi }; }
 function DR() {
-  const p = dash.params(); let a = p.from, b = p.to; const bd = dayBounds();
+  const p = dash.params(); let a = p.from || p.to, b = p.to || p.from; const bd = dayBounds();
   if (!a || !b || !bd) return null;
   if (a > b) [a, b] = [b, a];
   const n = Math.round((Date.parse(b) - Date.parse(a)) / dayMs) + 1;
@@ -519,19 +519,21 @@ const PT_GROUPS = ['vol-pt', 'res24-pt', 'ro-pt', 'p95-pt'];
 function setPt(v) {
   PT_GROUPS.forEach((g) => { state[g] = v; document.querySelectorAll(`[data-group="${g}"] button`).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === v))); });
 }
-function onDate() {
-  const a = fFrom.value, b = fTo.value;
-  const ok = (el) => el.value && el.validity.valid && (!el.min || el.value >= el.min) && (!el.max || el.value <= el.max);
-  if (!ok(fFrom) || !ok(fTo)) return;
+/* Each date is kept as soon as it is picked; one date alone shows that single day. */
+function onDate(e) {
+  const el = e.target, key = el === fFrom ? 'from' : 'to';
+  if (!el.value) { dash.setParams({ [key]: null }); return; }
+  const ok = el.validity.valid && (!el.min || el.value >= el.min) && (!el.max || el.value <= el.max);
+  if (!ok) return; // half-typed or outside the data: wait for a whole date in range
   setPt('custom'); state.resPeriod = '2-sel';
-  dash.setParams({ from: a <= b ? a : b, to: a <= b ? b : a });
+  dash.setParams({ [key]: el.value });
 }
 [fFrom, fTo].forEach((el) => { el.addEventListener('change', onDate); el.addEventListener('blur', () => drawDates()); });
 function drawDates() {
   const bd = dayBounds(), p = dash.params(), dr = DR();
   if (bd) [fFrom, fTo].forEach((el) => { el.min = bd.lo; el.max = bd.hi; });
-  if (document.activeElement !== fFrom) fFrom.value = dr ? dr.from : (p.from || '');
-  if (document.activeElement !== fTo) fTo.value = dr ? dr.to : (p.to || '');
+  if (document.activeElement !== fFrom) fFrom.value = p.from || '';
+  if (document.activeElement !== fTo) fTo.value = p.to || '';
   document.querySelectorAll('.cx-seg [data-v="custom"]').forEach((b) => { b.hidden = !dr; });
   if (!dr) {
     if (PT_GROUPS.some((g) => state[g] === 'custom')) setPt('month');
@@ -556,7 +558,7 @@ function drawFilters() {  const raw = rowsOf('breakdown'); const s = S();
     root.querySelector('.cx-ms-txt').textContent = !chosen.length ? cfg.all : chosen.length === 1 ? chosen[0] : chosen.length + ' ' + cfg.many;
     btn.classList.toggle('on', chosen.length > 0);
   });
-  fReset.hidden = !s.wss.length && !s.chs.length && !s.cats.length && !s.queues.length && !s.from;
+  fReset.hidden = !s.wss.length && !s.chs.length && !s.cats.length && !s.queues.length && !s.from && !s.to;
   drawDates();
   document.getElementById('f-scope').textContent = state.tab === 'ops' ? 'Workstream, chat/call, category and queue filters apply to open tickets by age; the date range does not (it shows tickets open now). Zone, partner, SLA, arrivals and channel tables show all tickets for the full period.' : '';
 }
