@@ -15,14 +15,14 @@ arrival-time and channel views.
 2. `scripts/alerts.py` posts the day's notable changes to Slack.
 
 The Slack message shows the **category** cut only (one short line per change, 🔴 worse / 🟢 better, empty metrics left out).
-Changes are measured on equally old tickets and reported only when the category has at least 50 tickets and moves past (at most 5 lines up and 5 down per metric):
+Changes are measured on equally old tickets and reported only when the category has at least 20 tickets and moves past (at most 5 lines up and 5 down per metric):
 
 | Number | Compared | Limit |
 |---|---|---|
-| Tickets created | yesterday vs same weekday last week | ±20% |
-| Solved within 24h | tickets raised 2 days ago vs 9 days ago | ±5 points |
-| Reopened within 48h of being solved | tickets raised in the week 10–4 days ago vs the week before | ±3 points |
-| P95 time to solve (capped at 72h) | same two weeks as reopen | ±12 hours |
+| Tickets created | yesterday vs same weekday last week | ±5% |
+| Solved within 24h | tickets raised 2 days ago vs 9 days ago | ±3 points |
+| Reopened within 48h of being solved | tickets raised in the week 10–4 days ago vs the week before | ±2 points |
+| P95 time to solve (capped at 72h) | same two weeks as reopen | ±5 hours |
 
 Limits are constants at the top of `scripts/alerts.py`.
 

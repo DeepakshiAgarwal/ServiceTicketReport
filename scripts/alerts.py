@@ -20,11 +20,11 @@ from metabase import query, sql_file
 DASHBOARD_URL = "https://deepakshiagarwal.github.io/ServiceTicketReport/"
 
 # A category needs at least MIN_TICKETS on both sides (either side for volume).
-MIN_TICKETS = 50
-VOLUME_PCT = 0.20      # tickets created, +/- 20%
-R24_PP = 0.05          # resolved within 24h, +/- 5 percentage points
-REOPEN_PP = 0.03       # reopened within 48h of resolution, +/- 3 pp
-P95_HOURS = 12         # P95 resolution time, +/- 12 hours (capped at 72h)
+MIN_TICKETS = 20
+VOLUME_PCT = 0.05      # tickets created, +/- 5%
+R24_PP = 0.03          # resolved within 24h, +/- 3 percentage points
+REOPEN_PP = 0.02       # reopened within 48h of resolution, +/- 2 pp
+P95_HOURS = 5          # P95 resolution time, +/- 5 hours (capped at 72h)
 P95_CAP = 72.0
 MAX_LINES = 5          # per direction (up / down) in each metric
 
