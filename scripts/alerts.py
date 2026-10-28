@@ -1,11 +1,10 @@
-"""Daily CX ticket alerts to Slack.
+"""Daily CX ticket alerts to Slack — category cut only, one short line per change.
 
-Four sections, each with its own dates (see sql/alerts.sql):
-  1. Tickets created           yesterday vs the same weekday last week          (day vs day)
-  2. Resolved within 24h       tickets created 2 days ago vs 9 days ago         (day vs day; the 24h are over)
-  3. Reopened within 48h       tickets created in the week D-10..D-4 vs the week before   (week vs week)
-  4. P95 resolution time       same two weeks as section 3                       (week vs week)
-Rows: all tickets, workstream, chat/call, category, sub-category, queue, workstream x category.
+Five metrics, each on equally-old tickets (see sql/alerts.sql):
+  Volume          tickets created yesterday vs the same weekday last week
+  Resolved ≤24h   tickets created 2 days ago vs 9 days ago (their 24h are over)
+  Reopened ≤48h   tickets created in the week D-10..D-4 vs the week before
+  P95 time        same two weeks as reopen
 Posts to the Slack incoming webhook in SLACK_WEBHOOK_URL; without it, only prints the message.
 
     python scripts/alerts.py
@@ -20,95 +19,69 @@ from metabase import query, sql_file
 
 DASHBOARD_URL = "https://deepakshiagarwal.github.io/ServiceTicketReport/"
 
-# Standard limits: a row needs at least MIN_TICKETS on both sides (either side for volume).
+# A category needs at least MIN_TICKETS on both sides (either side for volume).
 MIN_TICKETS = 50
 VOLUME_PCT = 0.20      # tickets created, +/- 20%
 R24_PP = 0.05          # resolved within 24h, +/- 5 percentage points
 REOPEN_PP = 0.03       # reopened within 48h of resolution, +/- 3 pp
 P95_HOURS = 12         # P95 resolution time, +/- 12 hours (capped at 72h)
 P95_CAP = 72.0
-MAX_WORSE = 5          # lines per section for things that got worse
-MAX_BETTER = 3         # lines per section for things that got better
+MAX_LINES = 5          # per direction (up / down) in each metric
 
-PRIO = {"All tickets": 0, "Workstream": 1, "Chat / call": 2, "Category": 3, "Queue": 4, "Sub-category": 5, "Workstream › category": 6}
-KIND = {"Workstream": "workstream", "Chat / call": "chat/call", "Category": "category",
-        "Sub-category": "sub-category", "Queue": "queue", "Workstream › category": "workstream › category"}
+BAD, GOOD = ":red_circle:", ":large_green_circle:"
+UP_IS_BAD = {"vol": True, "r24": False, "reopen": True, "p95": True}
 
 
 def fmt_day(d: dt.date) -> str:
-    return f"{d:%a} {d.day} {d:%b}"
+    return f"{d.day} {d:%b}"
 
 
 def fmt_range(a: dt.date, b: dt.date) -> str:
-    return f"{a.day}–{b.day} {b:%b}" if a.month == b.month else f"{a.day} {a:%b} – {b.day} {b:%b}"
-
-
-def row_name(r: dict) -> str:
-    if r["dim"] == "All tickets":
-        return "*All tickets*"
-    return f"*{r['val']}* _({KIND.get(r['dim'], r['dim'])})_"
+    return f"{a.day}–{b.day} {b:%b}" if a.month == b.month else f"{a.day} {a:%b}–{b.day} {b:%b}"
 
 
 def find_alerts(rows: list) -> dict:
-    """{section: [(bad, size, line), ...]}"""
+    """{metric: [(went_up, size, line), ...]} for Category rows only."""
     out = {"vol": [], "r24": [], "reopen": [], "p95": []}
     for r in rows:
-        # Only two workstreams are reported: PFT and CX L2 (tickets in neither still count in every other cut)
-        if r["dim"] in ("Workstream", "Workstream › category") and str(r["val"]).split(" › ")[0] == "Other":
+        if r["dim"] != "Category":
             continue
         n = lambda k: float(r.get(k) or 0)
-        name = row_name(r); prio = PRIO.get(r["dim"], 9)
+        name = r["val"]
 
         cur, prev = n("vol_cur"), n("vol_prev")
         if max(cur, prev) >= MIN_TICKETS:
             chg = (cur - prev) / prev if prev else 1.0
             if abs(chg) >= VOLUME_PCT:
-                out["vol"].append((chg > 0, abs(chg) / VOLUME_PCT, f"{name}: {cur:,.0f} vs {prev:,.0f} tickets → {chg:+.0%}", prio))
+                out["vol"].append((chg > 0, abs(chg), f"{name}  {prev:,.0f} → {cur:,.0f}  ({chg:+.0%})"))
 
         bc, bp = n("r24_base_cur"), n("r24_base_prev")
         if bc >= MIN_TICKETS and bp >= MIN_TICKETS:
             a, b = n("r24_cur") / bc, n("r24_prev") / bp
             if abs(a - b) >= R24_PP:
-                out["r24"].append((a < b, abs(a - b) / R24_PP, f"{name}: {a:.1%} vs {b:.1%} → {(a - b) * 100:+.1f} points", prio))
+                out["r24"].append((a > b, abs(a - b), f"{name}  {b:.0%} → {a:.0%}  ({(a - b) * 100:+.0f} pts)"))
 
         bc, bp = n("ro_base_cur"), n("ro_base_prev")
         if bc >= MIN_TICKETS and bp >= MIN_TICKETS:
             a, b = n("ro_cur") / bc, n("ro_prev") / bp
             if abs(a - b) >= REOPEN_PP:
-                out["reopen"].append((a > b, abs(a - b) / REOPEN_PP, f"{name}: {a:.1%} vs {b:.1%} → {(a - b) * 100:+.1f} points", prio))
+                out["reopen"].append((a > b, abs(a - b), f"{name}  {b:.1%} → {a:.1%}  ({(a - b) * 100:+.1f} pts)"))
 
         if n("p95_base_cur") >= MIN_TICKETS and n("p95_base_prev") >= MIN_TICKETS and r.get("p95_cur") is not None and r.get("p95_prev") is not None:
             a, b = n("p95_cur"), n("p95_prev")
             if not (a >= P95_CAP and b >= P95_CAP) and abs(a - b) >= P95_HOURS:
-                fa = "72h+" if a >= P95_CAP else f"{a:.1f}h"
-                fb = "72h+" if b >= P95_CAP else f"{b:.1f}h"
-                out["p95"].append((a > b, abs(a - b) / P95_HOURS, f"{name}: {fa} vs {fb} → {a - b:+.1f} hours", prio))
+                h = lambda x: "72h+" if x >= P95_CAP else f"{x:.0f}h"
+                out["p95"].append((a > b, abs(a - b), f"{name}  {h(b)} → {h(a)}  ({a - b:+.0f}h)"))
     return out
 
 
-def dedupe(items: list) -> list:
-    """Drop lines whose numbers repeat an earlier, broader row (e.g. queue Cx = workstream CX L2)."""
-    seen, out = set(), []
-    for a in sorted(items, key=lambda a: a[3]):
-        nums = a[2].split(": ", 1)[-1]
-        if nums in seen:
-            continue
-        seen.add(nums)
-        out.append(a)
-    return out
-
-
-def section(title: str, when: str, why: str, items: list) -> list:
-    lines = [f"\n*{title}*", f"{when}", f"_{why}_"]
-    items = dedupe(items)
+def block(title: str, items: list, up_is_bad: bool) -> list:
     if not items:
-        return lines + [":white_check_mark: Nothing moved more than usual."]
-    for bad, icon, word, cap in ((True, ":red_circle:", "Worse", MAX_WORSE), (False, ":large_green_circle:", "Better", MAX_BETTER)):
-        part = sorted((a for a in items if a[0] == bad), key=lambda a: -a[1])
-        if not part:
-            continue
-        lines.append(f"{icon} {word}" + (f" — top {cap} of {len(part)}" if len(part) > cap else ""))
-        lines += [f"• {a[2]}" for a in part[:cap]]
+        return []
+    lines = [f"\n*{title}*"]
+    for up in (True, False):
+        part = sorted((a for a in items if a[0] == up), key=lambda a: -a[1])[:MAX_LINES]
+        lines += [f"{BAD if up == up_is_bad else GOOD} {'▲' if up else '▼'} {a[2]}" for a in part]
     return lines
 
 
@@ -116,35 +89,16 @@ def message(rows: list, alerts: dict) -> str:
     yday = dt.date.fromisoformat(rows[0]["d_vol_cur"])
     today = yday + dt.timedelta(days=1)
     d = lambda k: today - dt.timedelta(days=k)
-    week_cur, week_prev = fmt_range(d(10), d(4)), fmt_range(d(17), d(11))
-    total = sum(len(v) for v in alerts.values())
+    weeks = f"wk {fmt_range(d(17), d(11))} → {fmt_range(d(10), d(4))}"
 
-    parts = [
-        f"*CX ticket alerts — {fmt_day(today)}*",
-        f"{total} numbers moved more than usual. :red_circle: got worse · :large_green_circle: got better.",
-        "Each line reads: *this period* vs *the period it is compared with* → change.",
-    ]
-    parts += section(
-        "1) Tickets coming in  (daily)",
-        f":calendar: *{fmt_day(d(1))}* vs *{fmt_day(d(8))}*",
-        f"Yesterday compared with the same day last week. Flagged when the count moves by {VOLUME_PCT:.0%} or more.",
-        alerts["vol"])
-    parts += section(
-        "2) Tickets solved within 24 hours  (daily)",
-        f":calendar: Tickets raised on *{fmt_day(d(2))}* vs *{fmt_day(d(9))}*",
-        f"We look 2 days back so every ticket has had its full 24 hours. Flagged when the share moves by {R24_PP * 100:.0f} points or more.",
-        alerts["r24"])
-    parts += section(
-        "3) Tickets reopened within 2 days of being solved  (weekly)",
-        f":calendar: Tickets raised in the week *{week_cur}* vs the week *{week_prev}*",
-        f"Weekly, because one day has too few reopens. Flagged when the share moves by {REOPEN_PP * 100:.0f} points or more.",
-        alerts["reopen"])
-    parts += section(
-        "4) Time to solve the slowest tickets — P95  (weekly)",
-        f":calendar: Tickets raised in the week *{week_cur}* vs the week *{week_prev}*",
-        f"95% of tickets were solved within this many hours; lower is better (72h+ means slower than 3 days). Flagged when it moves by {P95_HOURS} hours or more.",
-        alerts["p95"])
-    parts.append(f"\n_Groups with fewer than {MIN_TICKETS} tickets are skipped so small numbers don't raise alarms._  <{DASHBOARD_URL}|Open the dashboard for details>")
+    parts = [f"*CX alerts by category — {today:%a} {fmt_day(today)}*"]
+    parts += block(f"Volume  ({fmt_day(d(8))} → {fmt_day(d(1))})", alerts["vol"], UP_IS_BAD["vol"])
+    parts += block(f"Resolved ≤24h  ({fmt_day(d(9))} → {fmt_day(d(2))})", alerts["r24"], UP_IS_BAD["r24"])
+    parts += block(f"Reopen ≤48h  ({weeks})", alerts["reopen"], UP_IS_BAD["reopen"])
+    parts += block(f"P95 time  ({weeks})", alerts["p95"], UP_IS_BAD["p95"])
+    if len(parts) == 1:
+        parts.append("No category moved more than usual. :white_check_mark:")
+    parts.append(f"\n<{DASHBOARD_URL}|Dashboard>")
     return "\n".join(parts)
 
 

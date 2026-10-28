@@ -14,8 +14,8 @@ arrival-time and channel views.
 1. `scripts/refresh_build.py` pulls the data from Metabase and rebuilds `index.html`, which is committed and republished.
 2. `scripts/alerts.py` posts the day's notable changes to Slack.
 
-Alerts compare every row (all tickets, each workstream, chat/call, category, sub-category, queue and workstream × category)
-on equally old tickets, and report a change only when the row has at least 50 tickets and moves past (at most 5 worse and 3 better lines per section, duplicates removed):
+The Slack message shows the **category** cut only (one short line per change, 🔴 worse / 🟢 better, empty metrics left out).
+Changes are measured on equally old tickets and reported only when the category has at least 50 tickets and moves past (at most 5 lines up and 5 down per metric):
 
 | Number | Compared | Limit |
 |---|---|---|
