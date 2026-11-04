@@ -1,12 +1,15 @@
 name: Daily refresh and Slack alerts
 
 on:
+  push:                      # the 10:00 IST push from the PC task (scripts/daily_local.ps1)
+    branches: [main]
+    paths: [index.html]
   schedule:
-    - cron: "30 4 * * *"   # 10:00 IST every day (GitHub may start it a few minutes late)
-  workflow_dispatch:         # "Run workflow" button for a manual run
+    - cron: "30 4 * * *"   # backup: GitHub often starts this hours late; skips Slack if already sent today
+  workflow_dispatch:         # "Run workflow" button for a manual run (always sends)
 
 permissions:
-  contents: write   # commit the refreshed index.html
+  contents: write   # commit the refreshed index.html and last_alert.txt
   pages: write      # ask GitHub Pages to republish
 
 concurrency:
@@ -25,25 +28,43 @@ jobs:
           python-version: "3.12"
 
       - name: Refresh dashboard data
+        if: github.event_name != 'push'
         env:
           METABASE_API_KEY: ${{ secrets.METABASE_API_KEY }}
         run: python scripts/refresh_build.py
 
       - name: Publish refreshed dashboard
+        if: github.event_name != 'push'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
           if git diff --cached --quiet; then echo "No data change"; exit 0; fi
           git commit -m "Daily data refresh $(date -u +%F)"
-          git push
+          git pull --rebase -q && git push
           curl -fsS -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/${{ github.repository }}/pages/builds" || echo "Pages rebuild request failed; it will publish on the next push"
 
-      - name: Send Slack alerts
+      - name: Already sent today?
+        id: sent
         if: always()
+        run: |
+          git pull -q || true
+          today=$(TZ=Asia/Kolkata date +%F)
+          if [ "${{ github.event_name }}" != "workflow_dispatch" ] && [ "$(cat last_alert.txt 2>/dev/null)" = "$today" ]; then
+            echo "Slack report already sent on $today"; echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Send Slack alerts
+        if: always() && steps.sent.outputs.skip != 'true'
         env:
           METABASE_API_KEY: ${{ secrets.METABASE_API_KEY }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        run: python scripts/alerts.py
+        run: |
+          python scripts/alerts.py
+          TZ=Asia/Kolkata date +%F > last_alert.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add last_alert.txt
+          git diff --cached --quiet || { git commit -q -m "Slack report sent $(cat last_alert.txt)"; git pull --rebase -q && git push -q; }

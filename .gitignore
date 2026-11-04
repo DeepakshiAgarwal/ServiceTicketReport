@@ -1,2 +1,3 @@
 out/
 __pycache__/
+scripts/daily_local.log
